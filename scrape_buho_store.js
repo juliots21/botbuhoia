@@ -15,22 +15,22 @@ const path = require('path');
 
 const KNOWLEDGE_DIR = path.join(__dirname, 'data', 'knowledge');
 
-// Configuración de productos a scrapear (TODOS los productos de buho.la/store)
+// Configuración de productos a scrapear (TODOS los 17 productos de buho.la/store)
 const PRODUCTS = [
-    // ─── Hosting ───
+    // ─── Infraestructura ───
     {
         url: 'https://buho.la/store/hosting-compartido',
         jsonFile: 'hosting.json',
         name: 'Hosting Linux',
         samplePurchaseUrl: 'https://buho.la/store/hosting-compartido/hosting-l5'
     },
-    // ─── Comunicación ───
     {
-        url: 'https://buho.la/store/chat',
-        jsonFile: 'buhochat.json',
-        name: 'Chat Buho',
-        samplePurchaseUrl: 'https://buho.la/store/chat/chat-buho-ch-3'
+        url: 'https://buho.la/store/vps',
+        jsonFile: 'vps.json',
+        name: 'Servidores Cloud VPS',
+        samplePurchaseUrl: 'https://buho.la/store/vps/e4'
     },
+    // ─── Correos Corporativos ───
     {
         url: 'https://buho.la/store/google-workspace',
         jsonFile: 'correoscorporativos.json',
@@ -42,6 +42,13 @@ const PRODUCTS = [
         jsonFile: 'zohomail.json',
         name: 'Correos Corporativos: Zoho Mail',
         samplePurchaseUrl: 'https://buho.la/store/zoho-mail/zoho-mail-z5'
+    },
+    // ─── Comunicación ───
+    {
+        url: 'https://buho.la/store/chat',
+        jsonFile: 'buhochat.json',
+        name: 'Chat Buho',
+        samplePurchaseUrl: 'https://buho.la/store/chat/chat-buho-ch-3'
     },
     // ─── WhatsApp API (Waya) ───
     {
@@ -82,19 +89,45 @@ const PRODUCTS = [
         samplePurchaseUrl: 'https://buho.la/store/certificado-sunat/certificado-digital-sunat-clientes'
     },
     {
+        url: 'https://buho.la/store/pro8',
+        jsonFile: 'pro8.json',
+        name: 'Facturador Pro 8 - Perú',
+        samplePurchaseUrl: 'https://buho.la/store/pro8/pro8-essential'
+    },
+    {
+        url: 'https://buho.la/store/apps-facturacion',
+        jsonFile: 'mozo.json',
+        name: 'Mozo.pe / Vendeya.pe - Perú',
+        samplePurchaseUrl: 'https://buho.la/store/apps-facturacion/mozov4-comp'
+    },
+    {
         url: 'https://buho.la/store/app',
         jsonFile: 'app31.json',
         name: 'APP 3.1 Facturación - Perú',
         samplePurchaseUrl: 'https://buho.la/store/app/essential'
     },
-    // ─── Facturación Colombia ───
+    // ─── Colombia ───
     {
         url: 'https://buho.la/store/fastura-colombia',
         jsonFile: 'fastura_colombia.json',
         name: 'Fastura - Colombia',
         samplePurchaseUrl: null
+    },
+    {
+        url: 'https://buho.la/store/certificados-dian',
+        jsonFile: 'certificados_dian.json',
+        name: 'Certificado Digital - DIAN Colombia',
+        samplePurchaseUrl: null
+    },
+    // ─── Otros ───
+    {
+        url: 'https://buho.la/store/qrbuho',
+        jsonFile: 'qrbuho.json',
+        name: 'Qrbuho',
+        samplePurchaseUrl: null
     }
 ];
+
 
 /**
  * Extrae los planes y precios de una página de producto de buho.la/store
@@ -247,6 +280,32 @@ async function main() {
     if (!fs.existsSync(KNOWLEDGE_DIR)) {
         console.error('❌ Directorio de conocimiento no encontrado. Creándolo...');
         fs.mkdirSync(KNOWLEDGE_DIR, { recursive: true });
+    }
+
+    // Cargar fuentes adicionales desde scraper_sources.json
+    const SCRAPER_SOURCES_FILE = path.join(__dirname, 'data', 'scraper_sources.json');
+    if (fs.existsSync(SCRAPER_SOURCES_FILE)) {
+        try {
+            const extraSources = JSON.parse(fs.readFileSync(SCRAPER_SOURCES_FILE, 'utf-8'));
+            if (extraSources.sources && Array.isArray(extraSources.sources)) {
+                console.log(`\n📥 Cargando fuentes adicionales desde scraper_sources.json...`);
+                let added = 0;
+                for (const source of extraSources.sources) {
+                    if (source.enabled) {
+                        PRODUCTS.push({
+                            url: source.url,
+                            jsonFile: source.outputFile,
+                            name: `[EXTRA] ${source.name}`,
+                            samplePurchaseUrl: null
+                        });
+                        added++;
+                    }
+                }
+                console.log(`   Se agregaron ${added} fuentes adicionales.`);
+            }
+        } catch (error) {
+            console.error(`❌ Error leyendo scraper_sources.json: ${error.message}`);
+        }
     }
 
     for (const product of PRODUCTS) {
