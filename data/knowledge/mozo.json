@@ -1,0 +1,121 @@
+{
+  "sitio": "Mozo.pe",
+  "url": "https://mozo.pe/",
+  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "descripcion_general": "Mozo.pe es un sistema de gestión para restaurantes, minimarkets o cualquier punto de venta directa al público, sin depender del internet. Forma parte del ecosistema Pro8 de Digital Buho. La versión Mozo v4 2026 está en desarrollo con nuevas funcionalidades.",
+  "caracteristicas_clave": [
+    {
+      "titulo": "Gestión de Restaurantes",
+      "descripcion": "Sistema especializado para gestionar restaurantes con control de mesas, pedidos de cocina y atención al cliente."
+    },
+    {
+      "titulo": "Modo Offline",
+      "descripcion": "Optimizado para funcionar sin internet. Permite continuar operando normalmente incluso sin conexión."
+    },
+    {
+      "titulo": "Multiplataforma",
+      "descripcion": "Accesible y adaptable a cualquier dispositivo, cualquier tamaño y cualquier sistema operativo."
+    },
+    {
+      "titulo": "Punto de Venta Directa",
+      "descripcion": "Ideal para minimarkets, bodegas y cualquier negocio con venta directa al público."
+    },
+    {
+      "titulo": "Integración con Pro8",
+      "descripcion": "Se integra con el sistema de facturación electrónica Pro8 para generar comprobantes válidos ante SUNAT."
+    }
+  ],
+  "funcionalidades_detalladas": [
+    "Punto de Venta (POS) ágil con buscador y categorías",
+    "Gestión de Mesas y pedidos en tiempo real",
+    "Módulo de Comandas Inteligentes (envío automático a áreas de preparación como Cocina o Barra)",
+    "División de cuentas",
+    "Funcionamiento Off-line (sin internet) para emisión de notas de venta",
+    "Integración con Pro8 para Facturación Electrónica",
+    "Multi-dispositivo (acceso desde PC, tablets o móviles)",
+    "Sistema de diferentes accesos y roles (Administrador, Cajero, Mozo, Cocina)"
+  ],
+  "version_actual": "Mozo v4 2026 (en desarrollo)",
+  "integraciones": [
+    "Pro8 (Sistema de facturación)",
+    "SUNAT (Comprobantes electrónicos)",
+    "Impresoras térmicas de tickets"
+  ],
+  "planes": [
+    {
+      "nombre": "Mozo.pe Gratis",
+      "precio": "S/ 0",
+      "descripcion": "Accede a tu restaurante desde cualquier dispositivo a MOZO.PE",
+      "incluye": [
+        "10 restaurantes x dominio",
+        "Requiere tener el sistema de facturación Pro8 actualizado"
+      ],
+
+      "no_incluye": [
+        "Acceso al código compilado",
+        "Creación de issues",
+        "Instálalo en tu propio hosting",
+        "Úsalo con el dominio que quieras"
+      ]
+    },
+    {
+      "nombre": "Mozo Compilado",
+      "precio": "S/ 499",
+      "descripcion": "Instálalo donde quieras y accede con tu propio dominio personalizado",
+      "incluye": [
+        "Restaurantes ilimitados",
+        "Requiere tener el sistema de facturación Pro8 actualizado",
+        "Acceso al código compilado",
+        "Creación de issues y soporte 1 año",
+        "Instálalo en tu propio hosting",
+        "Úsalo con el dominio que quieras"
+      ]
+    },
+    {
+      "nombre": "Mozo Código Fuente",
+      "precio": "S/ 8990",
+      "descripcion": "Acceso completo al código fuente para desarrollo y personalización total",
+      "incluye": [
+        "Restaurantes ilimitados",
+        "Requiere tener el sistema de facturación Pro8 actualizado",
+        "Código fuente completo y editable",
+        "Soporte técnico y documentación",
+        "Personalización completa",
+        "Licencia de desarrollo comercial"
+      ]
+    }
+  ],
+  "demo": {
+    "url": "https://mozo.pe/#demoya",
+    "descripcion": "Entorno de prueba interactivo del sistema Mozo.pe con varios roles operativos para experimentar la plataforma completa.",
+    "accesos": [
+      {
+        "rol": "Administrador",
+        "usuario": "burger@gmail.com"
+      },
+      {
+        "rol": "Cajero",
+        "usuario": "caja@gmail.com"
+      },
+      {
+        "rol": "Mozo",
+        "usuario": "Seleccionar cualquier usuario mozo",
+        "pin": "1234"
+      },
+      {
+        "rol": "Cocina",
+        "usuario": "1768417420202@gmail.com"
+      },
+      {
+        "rol": "Ingreso General",
+        "usuario": "1768417332111@gmail.com",
+        "pin": "1234"
+      }
+    ]
+  },
+  "contacto": {
+    "whatsapp": "+51 944 999 965",
+    "web": "https://mozo.pe",
+    "empresa": "Digital Buho"
+  }
+}

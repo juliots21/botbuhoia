@@ -1,0 +1,43 @@
+{
+  "sitio": "Fastura - Colombia",
+  "url": "https://buho.la/store/fastura-colombia",
+  "ultima_actualizacion": "2026-03-23T22:48:00.000Z",
+  "descripcion_general": "Fastura Colombia es el sistema de facturación electrónica de Digital Buho para el mercado colombiano. Permite cuentas multiempresa o para resellers, similar a Fastura Perú pero adaptado para la facturación electrónica ante la DIAN en Colombia. Empieza tu propio negocio de facturación electrónica en Colombia.",
+  "caracteristicas_clave": [
+    {
+      "titulo": "Facturación Electrónica Colombia",
+      "descripcion": "Sistema de facturación electrónica adaptado para las regulaciones de la DIAN en Colombia."
+    },
+    {
+      "titulo": "Cuentas Multiempresa",
+      "descripcion": "Permite gestionar múltiples empresas desde una sola cuenta, ideal para contadores y resellers."
+    },
+    {
+      "titulo": "Para Resellers",
+      "descripcion": "Modelo de negocio enfocado en resellers que quieren ofrecer facturación electrónica en Colombia."
+    }
+  ],
+  "funcionalidades_detalladas": [
+    "Facturación electrónica con conexión a DIAN",
+    "Gestión multiempresa",
+    "Para resellers de facturación electrónica",
+    "Sistema basado en Fastura adaptado al mercado colombiano"
+  ],
+  "planes": [],
+  "nota": "Actualmente no hay productos visibles en esta categoría. Contactar directamente a Digital Buho para información sobre planes y precios para Colombia.",
+  "productos_relacionados": [
+    {
+      "nombre": "Certificado Digital - DIAN Colombia",
+      "url": "https://buho.la/store/certificados-dian"
+    },
+    {
+      "nombre": "Fastura - Perú (versión peruana)",
+      "url": "https://buho.la/store/fastura"
+    }
+  ],
+  "contacto": {
+    "whatsapp": "+51 944 999 965",
+    "web": "https://buho.la/store/fastura-colombia",
+    "empresa": "Digital Buho SAC"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "sources": [
+    {
+      "id": "pro8",
+      "name": "Pro8 - FacturaloPerú",
+      "url": "https://facturaloperu.com/pro8/#prices",
+      "outputFile": "pro8.json",
+      "enabled": true,
+      "description": "Sistema de facturación electrónica Pro8"
+    },
+    {
+      "id": "vendeya",
+      "name": "VendeYa.pe",
+      "url": "https://vendeya.pe/",
+      "outputFile": "vendeya.json",
+      "enabled": true,
+      "description": "Punto de venta rápido para negocios"
+    },
+    {
+      "id": "mozo",
+      "name": "Mozo.pe",
+      "url": "https://mozo.pe/",
+      "outputFile": "mozo.json",
+      "enabled": true,
+      "description": "Gestión de restaurantes y puntos de venta"
+    }
+  ]
+}

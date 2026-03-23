@@ -1,0 +1,14 @@
+node_modules/
+.env
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.idea/
+.vscode/
+
+mozo_extract.txt
+vendeya_extract.txt
+mozo_true_features.json
+vendeya_true_features.json

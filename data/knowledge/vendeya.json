@@ -1,0 +1,115 @@
+{
+  "sitio": "VendeYa.pe",
+  "url": "https://vendeya.pe/",
+  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "descripcion_general": "VendeYa.pe es el punto de venta con el flujo más rápido y simple del mundo. Permite vender y atender mucho más rápido a los clientes. Funciona con todos los rubros más populares del Perú. Es una extensión del ecosistema Pro8.",
+  "caracteristicas_clave": [
+    {
+      "titulo": "Punto de Venta Ultra Rápido y Visual",
+      "descripcion": "Optimizado para agilidad extrema, permitiendo abrir hasta 20 cajas o pestañas sin lag y búsqueda instantánea de productos."
+    },
+    {
+      "titulo": "Multiplataforma",
+      "descripcion": "Accesible y adaptable a cualquier dispositivo, cualquier tamaño y cualquier sistema operativo."
+    },
+    {
+      "titulo": "Múltiples Rubros",
+      "descripcion": "Compatible con todos los rubros más populares del Perú: tiendas, minimarkets, restaurantes, ferreterías, farmacias, entre otros."
+    },
+    {
+      "titulo": "Integración con Pro8",
+      "descripcion": "Forma parte del ecosistema de facturación electrónica Pro8, permitiendo facturación automática de las ventas realizadas."
+    },
+    {
+      "titulo": "Facturación Electrónica",
+      "descripcion": "Genera comprobantes electrónicos válidos ante SUNAT directamente desde el punto de venta."
+    }
+  ],
+  "funcionalidades_detalladas": [
+    "Punto de Venta (POS) ultra ligero y veloz",
+    "Diseñado para manejar múltiples pestañas o cajas simultáneas sin ralentización",
+    "Búsqueda instantánea de productos por nombre o código de barras",
+    "Ventas individuales o por Packs de productos",
+    "Campos especializados según rubro (Ejemplo: campo 'Placa' para control en grifos o estaciones de servicio)",
+    "Generación e impresión ágil de Facturas, Boletas y Notas de Venta integradas a Pro8",
+    "Herramientas de filtrado y control rápido de ventas diarias",
+    "Modo Offline (próximamente disponible)"
+  ],
+  "integraciones": [
+    "Pro8 (Sistema de facturación)",
+    "SUNAT (Comprobantes electrónicos)",
+    "Impresoras térmicas de tickets",
+    "Scanner de código de barras"
+  ],
+  "planes": [
+    {
+      "nombre": "VendeYa.pe Gratis",
+      "precio": "S/ 0",
+      "descripcion": "Accede a tu negocio desde cualquier dispositivo a VendeYa.pe",
+      "incluye": [
+        "10 negocios x dominio",
+        "Requiere tener el sistema de facturación Pro8 actualizado"
+      ],
+      "no_incluye": [
+        "Acceso al código compilado",
+        "Creación de issues",
+        "Instálalo en tu propio hosting",
+        "Úsalo con el dominio que quieras"
+      ]
+    },
+    {
+      "nombre": "VendeYa Compilado",
+      "precio": "S/ 299",
+      "descripcion": "Instálalo donde quieras y accede con tu propio dominio personalizado",
+      "incluye": [
+        "Negocios ilimitados",
+        "Requiere tener el sistema de facturación Pro8 actualizado",
+        "Acceso al código compilado",
+        "Creación de issues y soporte 1 año",
+        "Instálalo en tu propio hosting",
+        "Úsalo con el dominio que quieras"
+      ]
+    },
+    {
+      "nombre": "VendeYa Código Fuente",
+      "precio": "S/ 4999",
+      "descripcion": "Añade nuevas funciones y características según tus necesidades",
+      "incluye": [
+        "Acceso TOTAL al código fuente",
+        "Requiere tener el sistema de facturación Pro8 actualizado",
+        "Entrega del código fuente de la plantilla Base Vuero",
+        "Licencia de desarrollo comercial"
+      ]
+    }
+  ],
+  "demo": {
+    "url": "https://vendeya.pe/#demo",
+    "descripcion": "Entornos de prueba de VendeYa para diferentes tipos de negocios con catálogo precargado.",
+    "password_general": "123456",
+    "entornos": [
+      {
+        "rubro": "Tienda de Abarrotes",
+        "url": "https://abarrotes.pro7.uio.la",
+        "usuarios": [
+          "abarrotes@gmail.com",
+          "vendedor@gmail.com"
+        ]
+      },
+      {
+        "rubro": "Juguería",
+        "url": "https://jugueria.pro7.uio.la",
+        "usuario": "jugueria@gmail.com"
+      },
+      {
+        "rubro": "Ferretería",
+        "url": "https://ferreteria.pro7.uio.la",
+        "usuario": "ferreteria@gmail.com"
+      }
+    ]
+  },
+  "contacto": {
+    "whatsapp": "+51 944 999 965",
+    "web": "https://vendeya.pe",
+    "empresa": "Digital Buho"
+  }
+}

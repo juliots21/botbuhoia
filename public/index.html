@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ia-buho — Panel de Administración</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-glass: rgba(255, 255, 255, 0.03);
+            --border-glass: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(99, 102, 241, 0.3);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #475569;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent-hover: #818cf8;
+            --success: #22c55e;
+            --success-bg: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-bg: rgba(239, 68, 68, 0.1);
+            --info: #06b6d4;
+            --info-bg: rgba(6, 182, 212, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background animated gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 40% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
+            animation: bgShift 20s ease-in-out infinite alternate;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes bgShift {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-5%, 3%) rotate(3deg); }
+        }
+
+        .app { position: relative; z-index: 1; }
+
+        /* Header */
+        .header {
+            background: rgba(10, 14, 26, 0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-glass);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header-logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--accent), #a78bfa);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .header-title span {
+            color: var(--text-secondary);
+            font-weight: 400;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.offline { background: var(--danger); animation: none; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        }
+
+        /* Main Layout */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .stat-card:hover::after { opacity: 1; }
+        .stat-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+
+        .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+        }
+
+        /* Config Sections */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .config-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .config-card:hover { border-color: var(--border-accent); }
+
+        .config-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .config-header-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .config-header-icon.purple { background: var(--accent-glow); }
+        .config-header-icon.cyan { background: var(--info-bg); }
+        .config-header-icon.amber { background: var(--warning-bg); }
+        .config-header-icon.green { background: var(--success-bg); }
+        .config-header-icon.red { background: var(--danger-bg); }
+
+        .config-header h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .config-header p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .config-body {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* Form Controls */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-label .hint {
+            font-weight: 400;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .form-input {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 10px;
+            padding: 0.65rem 1rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .form-input::placeholder { color: var(--text-muted); }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .toggle-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .toggle-title { font-size: 0.85rem; font-weight: 500; }
+        .toggle-desc { font-size: 0.7rem; color: var(--text-muted); }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .toggle input { display: none; }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: 0.3s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: var(--accent);
+        }
+
+        .toggle input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.6rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-ghost {
+            background: var(--bg-glass);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-glass);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.825rem;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            animation: toastIn 0.35s ease;
+            min-width: 280px;
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+        .toast.info { border-left: 3px solid var(--info); }
+
+        .toast.fade-out { animation: toastOut 0.3s ease forwards; }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(30px) scale(0.95); }
+            to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        @keyframes toastOut {
+            to { opacity: 0; transform: translateX(30px) scale(0.95); }
+        }
+
+        /* Metrics Section */
+        .metrics-section {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glass);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .metrics-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .metrics-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .metrics-grid {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-item {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .metric-item:hover { border-color: var(--border-accent); }
+
+        .metric-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .metric-value.success { color: var(--success); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.danger { color: var(--danger); }
+        .metric-value.info { color: var(--info); }
+
+        /* Gemini Keys Table */
+        .keys-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .keys-table th {
+            text-align: left;
+            padding: 0.6rem 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .keys-table td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border-glass);
+            color: var(--text-secondary);
+        }
+
+        .keys-table tr:last-child td { border-bottom: none; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge.active { background: var(--success-bg); color: var(--success); }
+        .badge.inactive { background: var(--danger-bg); color: var(--danger); }
+
+        /* Loading skeleton */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-glass) 25%, rgba(255,255,255,0.06) 50%, var(--bg-glass) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 6px;
+            height: 1.2em;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main { padding: 1rem; }
+            .config-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .header { padding: 1rem; }
+            .header-title span { display: none; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-brand">
+                <div class="header-logo">🦉</div>
+                <div>
+                    <div class="header-title">ia-buho <span>Panel de Administración</span></div>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Conectando...</span>
+            </div>
+        </header>
+
+        <main class="main">
+            <!-- Stats Row -->
+            <div class="stats-row" id="statsRow">
+                <div class="stat-card">
+                    <span class="stat-icon">📨</span>
+                    <div class="stat-value" id="statMsgsReceived">—</div>
+                    <div class="stat-label">Mensajes Recibidos</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">✅</span>
+                    <div class="stat-value" id="statMsgsProcessed">—</div>
+                    <div class="stat-label">Procesados</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">❌</span>
+                    <div class="stat-value" id="statMsgsFailed">—</div>
+                    <div class="stat-label">Fallidos</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">⚡</span>
+                    <div class="stat-value" id="statLatencyAvg">—</div>
+                    <div class="stat-label">Latencia Promedio</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">💬</span>
+                    <div class="stat-value" id="statActiveConvos">—</div>
+                    <div class="stat-label">Chats Activos</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-icon">⏱️</span>
+                    <div class="stat-value" id="statUptime">—</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+            </div>
+
+            <!-- Config Cards -->
+            <div class="config-grid">
+                <!-- Rate Limiting -->
+                <div class="config-card">
+                    <div class="config-header">
+                        <div class="config-header-icon amber">🛡️</div>
+                        <div>
+                            <h3>Rate Limiting</h3>
+                            <p>Controla la frecuencia de mensajes por usuario</p>
+                        </div>
+                    </div>
+                    <div class="config-body">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Mensajes por ventana
+                                <span class="hint">Máximo de mensajes permitidos</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgRateMaxMessages" min="1" max="100" value="15">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Tamaño de ventana (ms)
+                                <span class="hint">Duración de la ventana en ms</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgRateWindowSize" min="10000" step="1000" value="60000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Cooldown (ms)
+                                <span class="hint">Espera tras exceder el límite</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgRateCooldown" min="1000" step="1000" value="10000">
+                        </div>
+                        <div class="actions-row">
+                            <button class="btn btn-ghost" onclick="resetSection('rateLimiting')">Resetear</button>
+                            <button class="btn btn-primary" onclick="saveSection('rateLimiting')">💾 Guardar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chunking / Streaming -->
+                <div class="config-card">
+                    <div class="config-header">
+                        <div class="config-header-icon cyan">💬</div>
+                        <div>
+                            <h3>Envío Progresivo (Chunks)</h3>
+                            <p>Efecto de escritura estilo ChatGPT</p>
+                        </div>
+                    </div>
+                    <div class="config-body">
+                        <div class="toggle-row">
+                            <div class="toggle-info">
+                                <span class="toggle-title">Activar Chunking</span>
+                                <span class="toggle-desc">Dividir mensajes en fragmentos</span>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="cfgChunkEnabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Máximo caracteres por chunk
+                                <span class="hint">Tamaño máx. de cada fragmento</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgChunkMaxLength" min="50" max="1000" value="300">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Delay entre chunks (ms)
+                                <span class="hint">Pausa entre cada fragmento</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgChunkDelay" min="100" max="5000" step="100" value="800">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Typing indicator (ms)
+                                <span class="hint">Duración del "escribiendo..."</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgChunkTyping" min="100" max="3000" step="100" value="400">
+                        </div>
+                        <div class="actions-row">
+                            <button class="btn btn-ghost" onclick="resetSection('chunking')">Resetear</button>
+                            <button class="btn btn-primary" onclick="saveSection('chunking')">💾 Guardar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gemini Config -->
+                <div class="config-card">
+                    <div class="config-header">
+                        <div class="config-header-icon purple">🧠</div>
+                        <div>
+                            <h3>Gemini AI</h3>
+                            <p>Parámetros de generación y protección</p>
+                        </div>
+                    </div>
+                    <div class="config-body">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Temperature
+                                <span class="hint">Creatividad (0.0 - 2.0)</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgGeminiTemp" min="0" max="2" step="0.1" value="0.7">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Max Output Tokens
+                                <span class="hint">Longitud máxima de respuesta</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgGeminiMaxTokens" min="100" max="8192" step="100" value="1024">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Timeout (ms)
+                                <span class="hint">Tiempo máximo de espera</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgGeminiTimeout" min="5000" max="120000" step="1000" value="30000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Circuit Breaker — Fallos para desactivar
+                                <span class="hint">Fallos consecutivos antes de desactivar key</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgGeminiCBThreshold" min="1" max="20" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Circuit Breaker — Tiempo de recuperación (ms)
+                                <span class="hint">Tiempo antes de reintentar key desactivada</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgGeminiCBRecovery" min="10000" max="600000" step="10000" value="120000">
+                        </div>
+                        <div class="actions-row">
+                            <button class="btn btn-ghost" onclick="resetSection('gemini')">Resetear</button>
+                            <button class="btn btn-primary" onclick="saveSection('gemini')">💾 Guardar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation Config -->
+                <div class="config-card">
+                    <div class="config-header">
+                        <div class="config-header-icon green">🗂️</div>
+                        <div>
+                            <h3>Conversaciones</h3>
+                            <p>Historial y gestión de contexto</p>
+                        </div>
+                    </div>
+                    <div class="config-body">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Máximo de mensajes en historial
+                                <span class="hint">Contexto enviado a Gemini</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgConvoMaxHistory" min="4" max="100" step="2" value="20">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Timeout de inactividad (ms)
+                                <span class="hint">Tiempo para limpiar chats inactivos</span>
+                            </label>
+                            <input type="number" class="form-input" id="cfgConvoTimeout" min="300000" max="86400000" step="300000" value="7200000">
+                        </div>
+                        <div class="actions-row">
+                            <button class="btn btn-ghost" onclick="resetSection('conversation')">Resetear</button>
+                            <button class="btn btn-primary" onclick="saveSection('conversation')">💾 Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Metrics -->
+            <div class="metrics-section">
+                <div class="metrics-header">
+                    <div class="metrics-header-left">
+                        <div class="config-header-icon purple">📊</div>
+                        <h3 style="font-size:0.95rem;font-weight:600;">Métricas Detalladas</h3>
+                    </div>
+                    <button class="btn btn-ghost" onclick="refreshMetrics()">↻ Actualizar</button>
+                </div>
+                <div class="metrics-grid" id="metricsGrid">
+                    <div class="metric-item">
+                        <div class="metric-value info" id="metricGeminiCalls">—</div>
+                        <div class="metric-label">Llamadas Gemini</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value warning" id="metricGeminiErrors">—</div>
+                        <div class="metric-label">Errores Gemini</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value success" id="metricWASent">—</div>
+                        <div class="metric-label">Msgs WhatsApp Enviados</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value danger" id="metricWAErrors">—</div>
+                        <div class="metric-label">Errores WhatsApp</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value warning" id="metricRateLimitHits">—</div>
+                        <div class="metric-label">Rate Limit Hits</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="metricDuplicates">—</div>
+                        <div class="metric-label">Msgs Duplicados</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value info" id="metricP50">—</div>
+                        <div class="metric-label">Latencia P50</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value warning" id="metricP95">—</div>
+                        <div class="metric-label">Latencia P95</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value danger" id="metricP99">—</div>
+                        <div class="metric-label">Latencia P99</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="metricMemory">—</div>
+                        <div class="metric-label">Memoria Heap</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value info" id="metricThroughput">—</div>
+                        <div class="metric-label">Msgs/min</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="metricQueuePending">—</div>
+                        <div class="metric-label">Cola Pendientes</div>
+                    </div>
+                </div>
+
+                <!-- Gemini Keys Status -->
+                <div style="padding: 0 1.5rem 1.5rem;">
+                    <h4 style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:0.75rem;font-weight:500;">Estado de API Keys Gemini</h4>
+                    <div style="background:var(--bg-glass);border:1px solid var(--border-glass);border-radius:12px;overflow:hidden;">
+                        <table class="keys-table" id="keysTable">
+                            <thead>
+                                <tr>
+                                    <th>Key #</th>
+                                    <th>Estado</th>
+                                    <th>Llamadas</th>
+                                    <th>Errores</th>
+                                    <th>Fallos Actuales</th>
+                                </tr>
+                            </thead>
+                            <tbody id="keysTableBody">
+                                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ═══════════════════════════════════════════════════
+        // State
+        // ═══════════════════════════════════════════════════
+        let currentConfig = null;
+        let refreshInterval = null;
+
+        // ═══════════════════════════════════════════════════
+        // API Calls
+        // ═══════════════════════════════════════════════════
+        const API_BASE = window.location.origin;
+
+        async function fetchJSON(url, options = {}) {
+            try {
+                const res = await fetch(API_BASE + url, {
+                    headers: { 'Content-Type': 'application/json' },
+                    ...options
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                console.error('API Error:', err);
+                throw err;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // Load Configuration
+        // ═══════════════════════════════════════════════════
+        async function loadConfig() {
+            try {
+                const cfg = await fetchJSON('/api/config');
+                currentConfig = cfg;
+
+                // Rate Limiting
+                document.getElementById('cfgRateMaxMessages').value = cfg.rateLimiting.maxMessagesPerWindow;
+                document.getElementById('cfgRateWindowSize').value = cfg.rateLimiting.windowSizeMs;
+                document.getElementById('cfgRateCooldown').value = cfg.rateLimiting.cooldownMs;
+
+                // Chunking
+                document.getElementById('cfgChunkEnabled').checked = cfg.whatsapp.chunking.enabled;
+                document.getElementById('cfgChunkMaxLength').value = cfg.whatsapp.chunking.maxChunkLength;
+                document.getElementById('cfgChunkDelay').value = cfg.whatsapp.chunking.delayBetweenChunksMs;
+                document.getElementById('cfgChunkTyping').value = cfg.whatsapp.chunking.typingIndicatorMs;
+
+                // Gemini
+                document.getElementById('cfgGeminiTemp').value = cfg.gemini.generationConfig.temperature;
+                document.getElementById('cfgGeminiMaxTokens').value = cfg.gemini.generationConfig.maxOutputTokens;
+                document.getElementById('cfgGeminiTimeout').value = cfg.gemini.timeout;
+                document.getElementById('cfgGeminiCBThreshold').value = cfg.gemini.circuitBreaker.failureThreshold;
+                document.getElementById('cfgGeminiCBRecovery').value = cfg.gemini.circuitBreaker.recoveryTimeMs;
+
+                // Conversation
+                document.getElementById('cfgConvoMaxHistory').value = cfg.conversation.maxHistoryMessages;
+                document.getElementById('cfgConvoTimeout').value = cfg.conversation.inactivityTimeoutMs;
+
+                showToast('Configuración cargada', 'success');
+            } catch (err) {
+                showToast('Error cargando configuración', 'error');
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // Save Configuration by Section
+        // ═══════════════════════════════════════════════════
+        async function saveSection(section) {
+            let payload = {};
+
+            switch (section) {
+                case 'rateLimiting':
+                    payload = {
+                        section: 'rateLimiting',
+                        data: {
+                            maxMessagesPerWindow: parseInt(document.getElementById('cfgRateMaxMessages').value),
+                            windowSizeMs: parseInt(document.getElementById('cfgRateWindowSize').value),
+                            cooldownMs: parseInt(document.getElementById('cfgRateCooldown').value)
+                        }
+                    };
+                    break;
+
+                case 'chunking':
+                    payload = {
+                        section: 'chunking',
+                        data: {
+                            enabled: document.getElementById('cfgChunkEnabled').checked,
+                            maxChunkLength: parseInt(document.getElementById('cfgChunkMaxLength').value),
+                            delayBetweenChunksMs: parseInt(document.getElementById('cfgChunkDelay').value),
+                            typingIndicatorMs: parseInt(document.getElementById('cfgChunkTyping').value)
+                        }
+                    };
+                    break;
+
+                case 'gemini':
+                    payload = {
+                        section: 'gemini',
+                        data: {
+                            temperature: parseFloat(document.getElementById('cfgGeminiTemp').value),
+                            maxOutputTokens: parseInt(document.getElementById('cfgGeminiMaxTokens').value),
+                            timeout: parseInt(document.getElementById('cfgGeminiTimeout').value),
+                            failureThreshold: parseInt(document.getElementById('cfgGeminiCBThreshold').value),
+                            recoveryTimeMs: parseInt(document.getElementById('cfgGeminiCBRecovery').value)
+                        }
+                    };
+                    break;
+
+                case 'conversation':
+                    payload = {
+                        section: 'conversation',
+                        data: {
+                            maxHistoryMessages: parseInt(document.getElementById('cfgConvoMaxHistory').value),
+                            inactivityTimeoutMs: parseInt(document.getElementById('cfgConvoTimeout').value)
+                        }
+                    };
+                    break;
+            }
+
+            try {
+                await fetchJSON('/api/config', {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+                showToast(`${section} guardado correctamente`, 'success');
+                await loadConfig(); // Recargar para confirmar
+            } catch (err) {
+                showToast(`Error guardando ${section}`, 'error');
+            }
+        }
+
+        function resetSection(section) {
+            if (currentConfig) loadConfig();
+            showToast(`${section} reseteado a valores actuales`, 'info');
+        }
+
+        // ═══════════════════════════════════════════════════
+        // Refresh Metrics
+        // ═══════════════════════════════════════════════════
+        async function refreshMetrics() {
+            try {
+                const data = await fetchJSON('/health');
+
+                // Status
+                document.getElementById('statusDot').className = 'status-dot';
+                document.getElementById('statusText').textContent = `Online · ${data.uptime.human}`;
+
+                // Top stats
+                document.getElementById('statMsgsReceived').textContent = data.counters.messagesReceived;
+                document.getElementById('statMsgsProcessed').textContent = data.counters.messagesProcessed;
+                document.getElementById('statMsgsFailed').textContent = data.counters.messagesFailed;
+                document.getElementById('statLatencyAvg').textContent = data.latency.avg ? data.latency.avg + 'ms' : '—';
+                document.getElementById('statActiveConvos').textContent = data.services.bot.activeConversations;
+                document.getElementById('statUptime').textContent = data.uptime.human;
+
+                // Detailed metrics
+                document.getElementById('metricGeminiCalls').textContent = data.counters.geminiCalls;
+                document.getElementById('metricGeminiErrors').textContent = data.counters.geminiErrors;
+                document.getElementById('metricWASent').textContent = data.counters.whatsappMessagesSent;
+                document.getElementById('metricWAErrors').textContent = data.counters.whatsappErrors;
+                document.getElementById('metricRateLimitHits').textContent = data.counters.rateLimitHits;
+                document.getElementById('metricDuplicates').textContent = data.counters.duplicateMessages;
+                document.getElementById('metricP50').textContent = data.latency.p50 ? data.latency.p50 + 'ms' : '—';
+                document.getElementById('metricP95').textContent = data.latency.p95 ? data.latency.p95 + 'ms' : '—';
+                document.getElementById('metricP99').textContent = data.latency.p99 ? data.latency.p99 + 'ms' : '—';
+                document.getElementById('metricMemory').textContent = data.memory.heapUsed;
+                document.getElementById('metricThroughput').textContent = data.throughput.messagesPerMinute;
+                document.getElementById('metricQueuePending').textContent = data.services.queue.totalPending;
+
+                // Gemini Keys Table
+                const tbody = document.getElementById('keysTableBody');
+                if (data.services.gemini.keys && data.services.gemini.keys.length > 0) {
+                    tbody.innerHTML = data.services.gemini.keys.map(k => `
+                        <tr>
+                            <td>Key #${k.index}</td>
+                            <td><span class="badge ${k.active ? 'active' : 'inactive'}">${k.active ? '● Activa' : '● Inactiva'}</span></td>
+                            <td>${k.totalCalls}</td>
+                            <td>${k.totalErrors}</td>
+                            <td>${k.failures}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Sin keys configuradas</td></tr>';
+                }
+
+            } catch (err) {
+                document.getElementById('statusDot').className = 'status-dot offline';
+                document.getElementById('statusText').textContent = 'Desconectado';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // Toast Notifications
+        // ═══════════════════════════════════════════════════
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const icons = { success: '✓', error: '✗', info: 'ℹ' };
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${icons[type] || 'ℹ'}</span> ${message}`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('fade-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ═══════════════════════════════════════════════════
+        // Initialize
+        // ═══════════════════════════════════════════════════
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            refreshMetrics();
+
+            // Auto-refresh metrics every 10 seconds
+            refreshInterval = setInterval(refreshMetrics, 10000);
+        });
+    </script>
+</body>
+</html>

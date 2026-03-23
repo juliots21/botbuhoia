@@ -1,0 +1,163 @@
+{
+  "sitio": "FacturaloPerú - Pro8",
+  "url": "https://facturaloperu.com/pro8/",
+  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "descripcion_general": "PRO 8 es un sistema de facturación electrónica para Resellers y Desarrolladores en Perú. Es multiempresa, multiusuario y multisucursales ilimitado. Permite crear tu propia marca, recibir actualizaciones diarias, cuenta con niveles de soporte técnico y proporciona 100% del código fuente.",
+  "caracteristicas_principales": [
+    {
+      "titulo": "Panel Administrador de Empresas",
+      "descripcion": "Solo el revendedor tiene acceso a este panel donde puede monitorear las empresas registradas, restringir permisos, crear planes y gestionar clientes. Es escalable y se puede mejorar el rendimiento del servidor en cualquier momento."
+    },
+    {
+      "titulo": "Facturación Electrónica",
+      "descripcion": "Crea facturas electrónicas de todo tipo y salta entre base de datos de empresas sin necesidad de desloguearte. Incluye módulos de ventas, compras, inventario y finanzas."
+    },
+    {
+      "titulo": "Punto de Venta (POS)",
+      "descripcion": "Punto de venta integrado con impresión directa de tickets, scanner de código de barras, compatible con balanzas electrónicas. Incluye reportes diarios de caja chica, ventas por vendedor y por tipo de pago."
+    },
+    {
+      "titulo": "Tienda Virtual",
+      "descripcion": "Expone productos al público para recibir pedidos online con proceso de delivery, entrega, pagos y factura electrónica. Soporta pasarelas de pago: Mercado Pago, Culqi y PayPal."
+    },
+    {
+      "titulo": "APP 3 - Android + iOS",
+      "descripcion": "Aplicación móvil compilada para iOS y Android. La interfaz se auto-ajusta a celulares y tablets."
+    },
+    {
+      "titulo": "Apps Integradas",
+      "descripcion": "Incluye apps de hoteles, restaurantes, transporte, y móvil que se pueden activar según el giro de negocio del cliente."
+    },
+    {
+      "titulo": "QR API WhatsApp GRATIS",
+      "descripcion": "Envía mensajes individuales o masivos usando la API conectada a WhatsApp. Integrado al Pro8, ProX y App3. Se puede revender el servicio, crear scripts para mensajes masivos e integrarlo en Woocommerce."
+    },
+    {
+      "titulo": "Certificados Digitales",
+      "descripcion": "Venta de paquetes de certificados digitales para facturación electrónica. Acreditados por INDECOPI, vigencia de 1 año, emisión en menos de 24 horas."
+    },
+    {
+      "titulo": "Grupo Empresarial",
+      "descripcion": "Cambia de empresa con un solo clic. Acceso interpersonal permite acceder a cualquier empresa directamente desde el administrador."
+    }
+  ],
+  "planes": [
+    {
+      "nombre": "Plan Essential",
+      "precio_mensual_equivalente": 166.67,
+      "moneda": "PEN",
+      "periodo": "6 meses",
+      "descripcion": "Ideal para clientes antiguos con experiencia en facturación electrónica o que ya vienen usando el sistema Facturador Pro3, Pro4, Pro5 en adelante.",
+      "incluye": [
+        "6 meses de acceso total al código fuente",
+        "Descuento especial en cotizaciones",
+        "6 meses de soporte esencial por tickets (1 instalación)",
+        "6 meses de acceso al APK APP 3.1 actualizado",
+        "6 meses de acceso al Plugin 2.0 de Woocommerce",
+        "Empresas ilimitadas",
+        "Instalación en tu propio servidor (GRATIS 1 instalación)"
+      ]
+    },
+    {
+      "nombre": "Plan Priority",
+      "precio_mensual_equivalente": 333.33,
+      "moneda": "PEN",
+      "periodo": "6 meses",
+      "descripcion": "Ideal para clientes nuevos o con poca experiencia en facturación electrónica, o clientes que necesitan soporte con respuestas inmediatas.",
+      "incluye": [
+        "6 meses de acceso total al código fuente",
+        "Descuento especial en cotizaciones",
+        "6 meses de soporte PRIORITARIO por WhatsApp (1 dominio)",
+        "6 meses de acceso al APK APP 3.1 actualizado",
+        "6 meses de acceso al Plugin 2.0 de Woocommerce",
+        "Empresas ilimitadas",
+        "Instalación en tu propio servidor (GRATIS 1 instalación)"
+      ]
+    }
+  ],
+  "nota_precios": "Precios no incluyen IGV. Para requerir factura aumentar el 18% del IGV. Este es un servicio autoadministrado. Configuración de nuevo dominio: S/100 (sin IGV).",
+  "stack_tecnologico": {
+    "frontend": ["Vue.js 2.6", "Vuex 3.6", "Vite 4.4", "Bootstrap 5.3"],
+    "backend": ["Laravel 9", "PHP 8.0+", "MySQL", "Composer", "Symfony"],
+    "pagos": ["Culqi", "Mercado Pago"],
+    "impresion": ["QZ Tray"]
+  },
+  "ultimas_actualizaciones": {
+    "version": "Pro 7.2",
+    "panel_administrador": [
+      "Nueva gestión de pagos para renovaciones del servicio",
+      "Botón de soporte mejorado con datos personalizados",
+      "Personalizar color de fondo en login de usuarios",
+      "Nuevo endpoint para bloquear/reactivar cuentas mediante API",
+      "Nueva opción para ver/ocultar columnas en lista de empresas",
+      "Mejoras visuales en la lista de empresas"
+    ],
+    "panel_cliente": [
+      "Estilo del login coincide con configuración del usuario",
+      "Opción para venta itinerante",
+      "Opción de consignado en direcciones de guías y comprobantes",
+      "Guía de remisión con entrega a terceros",
+      "Validación de caja antes de generar comprobantes",
+      "Mejor claridad en las tareas programadas"
+    ],
+    "sistema": [
+      "Actualización automática del SSL usando Cloudflare",
+      "Reinicio manual para reportes en cola"
+    ]
+  },
+  "proximas_actualizaciones": {
+    "version": "Pro 8.1",
+    "panel_administrador": [
+      "3 nuevos endpoints: listar empresas, bloquear reseller, configurar límite de empresas"
+    ],
+    "panel_cliente": [
+      "Listado de comprobantes en tienda virtual para clientes",
+      "Nueva opción para añadir 2 accesos directos personalizados"
+    ],
+    "mejoras": [
+      "Mejoramiento de impresión directa",
+      "Mejorar envío de PDF por WhatsApp y correo"
+    ],
+    "proximamente": [
+      "Notificaciones para alertar al cliente en su cuenta",
+      "Bartender general para impresión de etiquetas",
+      "Añadir campos personalizados en comprobantes"
+    ]
+  },
+  "migracion": {
+    "descripcion": "Si estás en Plan Pro5, Pro6 o Pro7 y deseas usar el Plan Pro8, primero debes contratar el nuevo plan. Luego se puede migrar la data.",
+    "costos": [
+      { "desde": "Pro7", "al": "Pro8", "precio": 99, "moneda": "PEN" },
+      { "desde": "Pro6", "al": "Pro8", "precio": 199, "moneda": "PEN" },
+      { "desde": "Pro5", "al": "Pro8", "precio": 399, "moneda": "PEN" }
+    ],
+    "nota": "El precio solo incluye migración de información, no renovación de plan. La migración se realiza después de renovar al Pro8. Precios aplican para sistemas sin personalizaciones."
+  },
+  "preguntas_frecuentes": [
+    {
+      "pregunta": "¿El Pro8 es una versión mejorada del ProX (SE)?",
+      "respuesta": "No. El ProX (SE) es un sistema con enfoque distinto y especializado con integraciones contables como Contaweb. El PRO8 forma parte de la evolución de PRO6 y PRO7 con mejoras en usabilidad, estabilidad y soporte activo."
+    },
+    {
+      "pregunta": "¿Puedo migrarme del Pro7 al Pro8?",
+      "respuesta": "Sí. La migración es fácil si estás en la última versión 7.2. Solo necesitas apuntar tu proyecto al nuevo repositorio del Pro8. Si estás en la versión 7 primero debes actualizar a la 7.2 ya que usa PHP8 y Laravel 9."
+    },
+    {
+      "pregunta": "¿Por qué ya no incluyen el código fuente de la App 3.1?",
+      "respuesta": "Desarrollar, mantener y dar soporte a la aplicación ha involucrado mucho más trabajo del estimado. La Aplicación 3.1 se trata como un producto independiente."
+    },
+    {
+      "pregunta": "Compré hace poco el Pro7, ¿tengo que comprar el Pro8?",
+      "respuesta": "No. Si tienes un plan activo con soporte vigente, puedes acceder al PRO8 gratuitamente solicitándolo por WhatsApp mientras tu soporte esté activo."
+    },
+    {
+      "pregunta": "¿Cómo funciona el soporte?",
+      "respuesta": "Plan Essential: soporte por tickets. Plan Priority: soporte por WhatsApp con respuestas inmediatas. Digital Buho puede coordinar atención por teléfono o videollamada según complejidad."
+    }
+  ],
+  "contacto": {
+    "whatsapp": "+51 944 999 965",
+    "web": "https://facturaloperu.com",
+    "empresa": "Digital Buho"
+  }
+}

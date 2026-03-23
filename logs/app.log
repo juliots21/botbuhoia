@@ -1,0 +1,28 @@
+2026-03-23 14:43:45 [WARN]: [GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.
+2026-03-23 14:43:45 [INFO]: =======================================================
+2026-03-23 14:43:45 [INFO]: 🦉 Servidor ia-buho v2.0 iniciado en el puerto 3000
+2026-03-23 14:43:45 [INFO]: ⚙️  Entorno: development
+2026-03-23 14:43:45 [INFO]: 🔗 Webhook: /webhook (GET verificación / POST eventos)
+2026-03-23 14:43:45 [INFO]: 📊 Health:  /health (Métricas y estado del sistema)
+2026-03-23 14:43:45 [INFO]: 🔑 API Keys Gemini configuradas: 0
+2026-03-23 14:43:45 [INFO]: 🛡️  Seguridad HMAC: DESACTIVADA (modo desarrollo)
+2026-03-23 14:43:45 [INFO]: ⚡ Rate Limiting: 15 msgs/60s
+2026-03-23 14:43:45 [INFO]: 📝 Chunking: ACTIVADO (max 300 chars/chunk)
+2026-03-23 14:43:45 [INFO]: =======================================================
+2026-03-23 14:44:06 [INFO]: [SHUTDOWN] Señal SIGINT recibida. Iniciando cierre limpio...
+2026-03-23 14:53:10 [WARN]: [GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.
+2026-03-23 14:53:10 [INFO]: =======================================================
+2026-03-23 14:53:10 [INFO]: 🦉 Servidor ia-buho v2.0 iniciado en el puerto 3000
+2026-03-23 14:53:10 [INFO]: ⚙️  Entorno: development
+2026-03-23 14:53:10 [INFO]: 🌐 Panel:   / (Dashboard de administración)
+2026-03-23 14:53:10 [INFO]: 🔗 Webhook: /webhook (GET verificación / POST eventos)
+2026-03-23 14:53:10 [INFO]: 📊 Health:  /health (Métricas y estado del sistema)
+2026-03-23 14:53:10 [INFO]: 🔧 API:     /api/config (GET / PUT configuración)
+2026-03-23 14:53:10 [INFO]: 🔑 API Keys Gemini configuradas: 0
+2026-03-23 14:53:10 [INFO]: 🛡️  Seguridad HMAC: DESACTIVADA (modo desarrollo)
+2026-03-23 14:53:10 [INFO]: ⚡ Rate Limiting: 15 msgs/60s
+2026-03-23 14:53:10 [INFO]: 📝 Chunking: ACTIVADO (max 300 chars/chunk)
+2026-03-23 14:53:10 [INFO]: =======================================================
+2026-03-23 15:57:18 [WARN]: [GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.
+2026-03-23 15:57:35 [WARN]: [GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.
+2026-03-23 16:21:56 [INFO]: [SHUTDOWN] Señal SIGINT recibida. Iniciando cierre limpio...
