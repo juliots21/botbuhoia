@@ -1,7 +1,7 @@
 {
   "sitio": "Correos Corporativos: Zoho Mail",
   "url": "https://buho.la/store/zoho-mail",
-  "ultima_actualizacion": "2026-03-23T22:21:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:01:00.999Z",
   "descripcion_general": "Zoho Mail es una solución de correos corporativos ofrecida por Digital Buho. Permite a las empresas tener correos profesionales con su propio dominio. Ofrece planes desde gratuitos hasta mensuales con almacenamiento expandible. Compatible con Outlook y con soporte completo para configuración.",
   "caracteristicas_clave": [
     {
@@ -48,7 +48,15 @@
         "Integración con Outlook"
       ],
       "nota": "Si aumenta a 6 correos, pasa automáticamente al siguiente plan",
-      "url_pedido": "https://buho.la/store/zoho-mail/zoho-mail-gratis-z5free"
+      "url_pedido": "https://buho.la/store/zoho-mail/zoho-mail-gratis-z5free",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/0.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        }
+      ]
     },
     {
       "nombre": "Zoho Mail Anual",
@@ -76,7 +84,15 @@
           "espacio_100gb": "S/100.00 por cuenta"
         },
         "costo_instalacion": "Ninguno"
-      }
+      },
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Anual",
+          "precio": "S/79.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        }
+      ]
     },
     {
       "nombre": "Zoho Mail Mensual",
@@ -91,7 +107,15 @@
         "Incremento 100GB adicionales por S/10.00 por cuenta",
         "Incremento 200GB adicionales por S/20.00 por cuenta"
       ],
-      "url_pedido": "https://buho.la/store/zoho-mail/zoho-mail-z30"
+      "url_pedido": "https://buho.la/store/zoho-mail/zoho-mail-z30",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/29.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        }
+      ]
     }
   ],
   "contacto": {

@@ -1,7 +1,7 @@
 {
   "sitio": "VendeYa.pe",
   "url": "https://vendeya.pe/",
-  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:16:32.942Z",
   "descripcion_general": "VendeYa.pe es el punto de venta con el flujo más rápido y simple del mundo. Permite vender y atender mucho más rápido a los clientes. Funciona con todos los rubros más populares del Perú. Es una extensión del ecosistema Pro8.",
   "caracteristicas_clave": [
     {
@@ -43,23 +43,23 @@
   ],
   "planes": [
     {
-      "nombre": "VendeYa.pe Gratis",
-      "precio": "S/ 0",
+      "nombre": "VendeYa.pe",
+      "precio": "Gratis",
       "descripcion": "Accede a tu negocio desde cualquier dispositivo a VendeYa.pe",
       "incluye": [
         "10 negocios x dominio",
-        "Requiere tener el sistema de facturación Pro8 actualizado"
-      ],
-      "no_incluye": [
+        "Requiere tener el sistema de facturación Pro8 actualizado",
         "Acceso al código compilado",
         "Creación de issues",
         "Instálalo en tu propio hosting",
         "Úsalo con el dominio que quieras"
-      ]
+      ],
+      "no_incluye": [],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20VendeYa"
     },
     {
       "nombre": "VendeYa Compilado",
-      "precio": "S/ 299",
+      "precio": "S/299",
       "descripcion": "Instálalo donde quieras y accede con tu propio dominio personalizado",
       "incluye": [
         "Negocios ilimitados",
@@ -68,18 +68,23 @@
         "Creación de issues y soporte 1 año",
         "Instálalo en tu propio hosting",
         "Úsalo con el dominio que quieras"
-      ]
+      ],
+      "no_incluye": [],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20VendeYa"
     },
     {
       "nombre": "VendeYa Código Fuente",
-      "precio": "S/ 4999",
+      "precio": "S/4999",
       "descripcion": "Añade nuevas funciones y características según tus necesidades",
       "incluye": [
+        "Todo lo que incluye VendeYa Compilado más:",
         "Acceso TOTAL al código fuente",
-        "Requiere tener el sistema de facturación Pro8 actualizado",
+        "Requiere tener el sistema de facturación Pro8 actualizado Aprenderás todo el flujo desde el facturador hasta VendeYa. Conocerás la estructura de datos enviados. Tecnologías usadas y sus versiones. Personalización de marca y diseño. Extensión para nuevas funcionalidades. Se compartirá la plantilla base de VendeYa.",
         "Entrega del código fuente de la plantilla Base Vuero",
         "Licencia de desarrollo comercial"
-      ]
+      ],
+      "no_incluye": [],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20VendeYa"
     }
   ],
   "demo": {

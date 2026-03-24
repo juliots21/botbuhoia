@@ -1,7 +1,7 @@
 {
   "sitio": "Mozo.pe",
   "url": "https://mozo.pe/",
-  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:18:44.634Z",
   "descripcion_general": "Mozo.pe es un sistema de gestión para restaurantes, minimarkets o cualquier punto de venta directa al público, sin depender del internet. Forma parte del ecosistema Pro8 de Digital Buho. La versión Mozo v4 2026 está en desarrollo con nuevas funcionalidades.",
   "caracteristicas_clave": [
     {
@@ -43,24 +43,24 @@
   ],
   "planes": [
     {
-      "nombre": "Mozo.pe Gratis",
-      "precio": "S/ 0",
+      "nombre": "Mozo.pe",
+      "precio": "Gratis",
       "descripcion": "Accede a tu restaurante desde cualquier dispositivo a MOZO.PE",
       "incluye": [
         "10 restaurantes x dominio",
         "Requiere tener el sistema de facturación Pro8 actualizado"
       ],
-
       "no_incluye": [
         "Acceso al código compilado",
         "Creación de issues",
         "Instálalo en tu propio hosting",
         "Úsalo con el dominio que quieras"
-      ]
+      ],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20Mozo"
     },
     {
       "nombre": "Mozo Compilado",
-      "precio": "S/ 499",
+      "precio": "S/499",
       "descripcion": "Instálalo donde quieras y accede con tu propio dominio personalizado",
       "incluye": [
         "Restaurantes ilimitados",
@@ -69,11 +69,13 @@
         "Creación de issues y soporte 1 año",
         "Instálalo en tu propio hosting",
         "Úsalo con el dominio que quieras"
-      ]
+      ],
+      "no_incluye": [],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20Mozo"
     },
     {
       "nombre": "Mozo Código Fuente",
-      "precio": "S/ 8990",
+      "precio": "S/8990",
       "descripcion": "Acceso completo al código fuente para desarrollo y personalización total",
       "incluye": [
         "Restaurantes ilimitados",
@@ -82,7 +84,9 @@
         "Soporte técnico y documentación",
         "Personalización completa",
         "Licencia de desarrollo comercial"
-      ]
+      ],
+      "no_incluye": [],
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20obtener%20el%20c%C3%B3digo%20fuente%20completo%20de%20Mozo"
     }
   ],
   "demo": {

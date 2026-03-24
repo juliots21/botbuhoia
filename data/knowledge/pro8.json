@@ -1,7 +1,7 @@
 {
   "sitio": "FacturaloPerú - Pro8",
   "url": "https://facturaloperu.com/pro8/",
-  "ultima_actualizacion": "2026-03-23T14:00:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:07:14.108Z",
   "descripcion_general": "PRO 8 es un sistema de facturación electrónica para Resellers y Desarrolladores en Perú. Es multiempresa, multiusuario y multisucursales ilimitado. Permite crear tu propia marca, recibir actualizaciones diarias, cuenta con niveles de soporte técnico y proporciona 100% del código fuente.",
   "caracteristicas_principales": [
     {
@@ -44,43 +44,77 @@
   "planes": [
     {
       "nombre": "Plan Essential",
-      "precio_mensual_equivalente": 166.67,
-      "moneda": "PEN",
-      "periodo": "6 meses",
-      "descripcion": "Ideal para clientes antiguos con experiencia en facturación electrónica o que ya vienen usando el sistema Facturador Pro3, Pro4, Pro5 en adelante.",
-      "incluye": [
-        "6 meses de acceso total al código fuente",
-        "Descuento especial en cotizaciones",
-        "6 meses de soporte esencial por tickets (1 instalación)",
-        "6 meses de acceso al APK APP 3.1 actualizado",
-        "6 meses de acceso al Plugin 2.0 de Woocommerce",
-        "Empresas ilimitadas",
-        "Instalación en tu propio servidor (GRATIS 1 instalación)"
-      ]
+      "descripcion": "Plan extraído desde facturaloperu.com/pro8",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/375.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Semi-Anual",
+          "precio": "S/1250.00 PEN",
+          "descuento": "44%",
+          "precio_original": "S/2250.00 PEN"
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/2000.00 PEN",
+          "descuento": "56%",
+          "precio_original": "S/4500.00 PEN"
+        }
+      ],
+      "precio": "S/375.00"
     },
     {
       "nombre": "Plan Priority",
-      "precio_mensual_equivalente": 333.33,
-      "moneda": "PEN",
-      "periodo": "6 meses",
-      "descripcion": "Ideal para clientes nuevos o con poca experiencia en facturación electrónica, o clientes que necesitan soporte con respuestas inmediatas.",
-      "incluye": [
-        "6 meses de acceso total al código fuente",
-        "Descuento especial en cotizaciones",
-        "6 meses de soporte PRIORITARIO por WhatsApp (1 dominio)",
-        "6 meses de acceso al APK APP 3.1 actualizado",
-        "6 meses de acceso al Plugin 2.0 de Woocommerce",
-        "Empresas ilimitadas",
-        "Instalación en tu propio servidor (GRATIS 1 instalación)"
-      ]
+      "descripcion": "Plan extraído desde facturaloperu.com/pro8",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/750.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Semi-Anual",
+          "precio": "S/2500.00 PEN",
+          "descuento": "44%",
+          "precio_original": "S/4500.00 PEN"
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/4000.00 PEN",
+          "descuento": "56%",
+          "precio_original": "S/9000.00 PEN"
+        }
+      ],
+      "precio": "S/750.00"
     }
   ],
   "nota_precios": "Precios no incluyen IGV. Para requerir factura aumentar el 18% del IGV. Este es un servicio autoadministrado. Configuración de nuevo dominio: S/100 (sin IGV).",
   "stack_tecnologico": {
-    "frontend": ["Vue.js 2.6", "Vuex 3.6", "Vite 4.4", "Bootstrap 5.3"],
-    "backend": ["Laravel 9", "PHP 8.0+", "MySQL", "Composer", "Symfony"],
-    "pagos": ["Culqi", "Mercado Pago"],
-    "impresion": ["QZ Tray"]
+    "frontend": [
+      "Vue.js 2.6",
+      "Vuex 3.6",
+      "Vite 4.4",
+      "Bootstrap 5.3"
+    ],
+    "backend": [
+      "Laravel 9",
+      "PHP 8.0+",
+      "MySQL",
+      "Composer",
+      "Symfony"
+    ],
+    "pagos": [
+      "Culqi",
+      "Mercado Pago"
+    ],
+    "impresion": [
+      "QZ Tray"
+    ]
   },
   "ultimas_actualizaciones": {
     "version": "Pro 7.2",
@@ -127,9 +161,24 @@
   "migracion": {
     "descripcion": "Si estás en Plan Pro5, Pro6 o Pro7 y deseas usar el Plan Pro8, primero debes contratar el nuevo plan. Luego se puede migrar la data.",
     "costos": [
-      { "desde": "Pro7", "al": "Pro8", "precio": 99, "moneda": "PEN" },
-      { "desde": "Pro6", "al": "Pro8", "precio": 199, "moneda": "PEN" },
-      { "desde": "Pro5", "al": "Pro8", "precio": 399, "moneda": "PEN" }
+      {
+        "desde": "Pro7",
+        "al": "Pro8",
+        "precio": 99,
+        "moneda": "PEN"
+      },
+      {
+        "desde": "Pro6",
+        "al": "Pro8",
+        "precio": 199,
+        "moneda": "PEN"
+      },
+      {
+        "desde": "Pro5",
+        "al": "Pro8",
+        "precio": 399,
+        "moneda": "PEN"
+      }
     ],
     "nota": "El precio solo incluye migración de información, no renovación de plan. La migración se realiza después de renovar al Pro8. Precios aplican para sistemas sin personalizaciones."
   },

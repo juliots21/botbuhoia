@@ -1,0 +1,163 @@
+{
+  "sitio": "Facturalo Perú",
+  "url": "https://facturaloperu.com",
+  "ultima_actualizacion": "2026-03-24T06:07:16.571Z",
+  "descripcion_general": "Sistemas de facturación electrónica y gestión para empresas, revendedores y desarrolladores en Perú.",
+  "caracteristicas_principales": [
+    {
+      "titulo": "Panel Administrador de Empresas",
+      "descripcion": "Gestión centralizada para revendedores."
+    },
+    {
+      "titulo": "Facturación Electrónica",
+      "descripcion": "Emisión de comprobantes electrónicos válidos para SUNAT."
+    },
+    {
+      "titulo": "Punto de Venta (POS)",
+      "descripcion": "Sistema preparado para ventas rápidas con tickets."
+    },
+    {
+      "titulo": "Tienda Virtual",
+      "descripcion": "Vende por internet con carrito de compras."
+    }
+  ],
+  "planes": [
+    {
+      "nombre": "Plan Essential",
+      "descripcion": "Plan extraído desde facturaloperu.com/pro8",
+      "ciclos_facturacion": [
+        {
+          "meses": 1,
+          "descuento": "Oferta",
+          "precio_total": 375,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte esencial por tickets (Para 1 instalación)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 3,
+          "descuento": "Oferta",
+          "precio_total": 750,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte esencial por tickets (Para 1 instalación)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 6,
+          "descuento": "Oferta",
+          "precio_total": 1250,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte esencial por tickets (Para 1 instalación)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 12,
+          "descuento": "Oferta",
+          "precio_total": 2000,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte esencial por tickets (Para 1 instalación)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        }
+      ]
+    },
+    {
+      "nombre": "Plan Priority",
+      "descripcion": "Plan extraído desde facturaloperu.com/pro8",
+      "ciclos_facturacion": [
+        {
+          "meses": 1,
+          "descuento": "Oferta",
+          "precio_total": 750,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte PRIORITARIO por WhatsApp (Para 1 dominio)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 3,
+          "descuento": "Oferta",
+          "precio_total": 1500,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte PRIORITARIO por WhatsApp (Para 1 dominio)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 6,
+          "descuento": "Oferta",
+          "precio_total": 2500,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte PRIORITARIO por WhatsApp (Para 1 dominio)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        },
+        {
+          "meses": 12,
+          "descuento": "Oferta",
+          "precio_total": 4000,
+          "moneda": "PEN",
+          "incluye": [
+            "6 meses de acceso total al código fuente",
+            "Descuento especial en cotizaciones",
+            "6 meses de soporte PRIORITARIO por WhatsApp (Para 1 dominio)",
+            "6 meses de acceso al APK APP 3.1 actualizado",
+            "6 meses de acceso al Plugin 2.0 de Woocommerce",
+            "Empresas ilimitadas",
+            "Instalación en tu propio servidor (GRATIS 1 Instalación)"
+          ]
+        }
+      ]
+    }
+  ],
+  "contacto": {
+    "whatsapp": "+51 944 999 965",
+    "web": "https://facturaloperu.com",
+    "empresa": "Buho Digital SAC"
+  }
+}

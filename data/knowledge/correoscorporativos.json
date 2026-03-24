@@ -1,7 +1,7 @@
 {
   "sitio": "Correos Corporativos: Google Workspace",
   "url": "https://buho.la/store/google-workspace",
-  "ultima_actualizacion": "2026-03-23T22:21:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:00:27.038Z",
   "descripcion_general": "Obtenga correos corporativos para su empresa con Google Workspace. Genere una mayor confianza a sus clientes. Soporte 100% para la configuración de sus correos corporativos. Digital Buho ofrece planes administrados y autoadministrados con diferentes niveles de almacenamiento y funcionalidades.",
   "caracteristicas_clave": [
     {
@@ -73,7 +73,21 @@
           "ahorro": "17% sobre precio mensual acumulado"
         },
         "costo_instalacion": "Ninguno"
-      }
+      },
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/25.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/259.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/310.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Google Workspace Starter 30GB",
@@ -94,7 +108,21 @@
         "Acceso al administrador de Google (admin.google.com)",
         "Administrado por el usuario + Apoyo de Buho"
       ],
-      "url_pedido": "https://buho.la/store/google-workspace/g30"
+      "url_pedido": "https://buho.la/store/google-workspace/g30",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/29.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/299.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/358.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Google Workspace Standard 2TB Administrado",
@@ -119,7 +147,21 @@
         "Personalización con logo"
       ],
       "nota": "Precio se prorratea a la fecha del 01 de enero de cada año",
-      "url_pedido": "https://buho.la/store/google-workspace/g2ta"
+      "url_pedido": "https://buho.la/store/google-workspace/g2ta",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/75.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/759.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/910.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Google Workspace Standard 2TB",
@@ -141,7 +183,21 @@
         "Acceso al administrador de Google (admin.google.com)",
         "Administrado por el usuario + Apoyo de Buho"
       ],
-      "url_pedido": "https://buho.la/store/google-workspace/g2tb"
+      "url_pedido": "https://buho.la/store/google-workspace/g2tb",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/79.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/799.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/958.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Google Workspace Plus 5TB",
@@ -163,7 +219,21 @@
         "Acceso al administrador de Google (admin.google.com)",
         "Administrado por el usuario + Apoyo de Buho"
       ],
-      "url_pedido": "https://buho.la/store/google-workspace/g5t"
+      "url_pedido": "https://buho.la/store/google-workspace/g5t",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/139.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1390.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/1668.00 PEN"
+        }
+      ]
     },
     {
       "nombre": "Google Workspace Enterprise Plus 5TB",
@@ -188,7 +258,21 @@
         "Acceso al administrador de Google (admin.google.com)",
         "Administrado por el usuario + Apoyo de Buho"
       ],
-      "url_pedido": "https://buho.la/store/google-workspace/ge5t"
+      "url_pedido": "https://buho.la/store/google-workspace/ge5t",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/199.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1990.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/2388.00 PEN"
+        }
+      ]
     }
   ],
   "notas_generales": [

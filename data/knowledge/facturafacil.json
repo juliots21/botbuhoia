@@ -1,7 +1,7 @@
 {
   "sitio": "Factura Fácil - Perú",
   "url": "https://buho.la/store/facturafacil",
-  "ultima_actualizacion": "2026-03-23T22:21:00.000Z",
+  "ultima_actualizacion": "2026-03-24T06:05:16.882Z",
   "descripcion_general": "Factura Fácil es un sistema de facturación electrónica con punto de venta y conexión directa a SUNAT, diseñado para cuentas de una sola empresa. Ofrece planes desde gratuitos hasta ilimitados, escalando en número de usuarios y comprobantes.",
   "caracteristicas_clave": [
     {
@@ -37,7 +37,7 @@
     {
       "nombre": "Factura Fácil - Gratis",
       "codigo": "FF-GRATIS",
-      "precio": "S/0.00",
+      "precio": "Gratis",
       "moneda": "PEN",
       "ciclo": "Mensual",
       "incluye": [
@@ -45,7 +45,81 @@
         "10 Comprobantes al mes"
       ],
       "condicion": "No emitir más de S/30,000 en ventas anuales",
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-ff-gratis"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-ff-gratis",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Anual",
+          "precio": "S/79.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/149.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/259.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/44.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/74.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/99.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/129.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/169.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/199.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/299.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/399.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Mensual",
+          "precio": "S/499.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F1",
@@ -57,7 +131,21 @@
         "1 Usuario",
         "100 Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f1"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f1",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/29.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/299.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/358.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F2",
@@ -69,7 +157,21 @@
         "2 Usuarios",
         "200 Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f2"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f2",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/44.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/449.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/538.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F3",
@@ -98,7 +200,27 @@
           "precio_total": "S/599.00 PEN"
         },
         "costo_instalacion": "Ninguno"
-      }
+      },
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/59.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Semi-Anual",
+          "precio": "S/359.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/599.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/718.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F4",
@@ -110,7 +232,21 @@
         "4 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f4"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f4",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/79.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/799.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/958.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F5",
@@ -122,7 +258,27 @@
         "5 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f5"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f5",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/99.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Semi-Anual",
+          "precio": "S/594.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/990.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/1188.00 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F6",
@@ -134,7 +290,21 @@
         "6 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f6"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f6",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/119.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1199.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/1438.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F7",
@@ -146,7 +316,21 @@
         "7 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f7"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f7",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/139.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1399.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/1678.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F8",
@@ -158,7 +342,21 @@
         "8 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f8"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f8",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/159.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1599.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/1918.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - F9",
@@ -170,7 +368,21 @@
         "9 Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f9"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-f9",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/179.90 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1799.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/2158.80 PEN"
+        }
+      ]
     },
     {
       "nombre": "Factura Fácil - Ilimitado",
@@ -182,7 +394,21 @@
         "Ilimitados Usuarios",
         "Ilimitados Comprobantes"
       ],
-      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-ilimitado"
+      "url_pedido": "https://buho.la/store/facturafacil/factura-facil-ilimitado",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/199.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/1990.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/2388.00 PEN"
+        }
+      ]
     }
   ],
   "contacto": {

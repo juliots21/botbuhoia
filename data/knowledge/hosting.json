@@ -1,7 +1,7 @@
 {
   "sitio": "Hosting Linux",
   "url": "https://buho.la/store/hosting-compartido",
-  "ultima_actualizacion": "2026-03-23T22:48:00.000Z",
+  "ultima_actualizacion": "2026-03-24T05:57:51.319Z",
   "descripcion_general": "Hosting Linux de alto rendimiento ofrecido por Digital Buho. Incluye certificado SSL gratis, correos ilimitados, cPanel, dominios adicionales ilimitados, subdominios ilimitados, base de datos ilimitadas. Compatible con WordPress, Joomla, Drupal, Moodle y más aplicaciones pre-instaladas con Softaculous. Soporte en español por WhatsApp, Telegram o correo electrónico.",
   "caracteristicas_clave": [
     {
@@ -49,7 +49,10 @@
       "precio": "S/79.00",
       "moneda": "PEN",
       "ciclo": "Anual",
-      "incluye": ["1 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "1 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l1"
     },
     {
@@ -59,7 +62,10 @@
       "precio": "S/149.00",
       "moneda": "PEN",
       "ciclo": "Anual",
-      "incluye": ["3 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "3 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l3"
     },
     {
@@ -69,7 +75,10 @@
       "precio": "S/259.00",
       "moneda": "PEN",
       "ciclo": "Anual",
-      "incluye": ["5 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "5 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l5",
       "detalles_compra": {
         "ciclo_anual": {
@@ -88,7 +97,10 @@
       "precio_anual": "S/449.00",
       "moneda": "PEN",
       "ciclo": "Mensual / Anual",
-      "incluye": ["10 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "10 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l10"
     },
     {
@@ -99,7 +111,10 @@
       "precio_anual": "S/749.00",
       "moneda": "PEN",
       "ciclo": "Mensual / Anual",
-      "incluye": ["20 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "20 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l20"
     },
     {
@@ -110,7 +125,10 @@
       "precio_anual": "S/999.00",
       "moneda": "PEN",
       "ciclo": "Mensual / Anual",
-      "incluye": ["30 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "30 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l30"
     },
     {
@@ -120,7 +138,10 @@
       "precio": "S/129.90",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["40 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "40 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l40"
     },
     {
@@ -130,7 +151,10 @@
       "precio": "S/169.90",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["50 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "50 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l50"
     },
     {
@@ -140,7 +164,10 @@
       "precio": "S/199.90",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["60 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "60 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l60"
     },
     {
@@ -150,7 +177,10 @@
       "precio": "S/299.00",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["90 GB de Espacio", "Ancho de Banda Ilimitado"],
+      "incluye": [
+        "90 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
       "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l90"
     },
     {
@@ -160,8 +190,25 @@
       "precio": "S/399.00",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["140 GB de Espacio", "Ancho de Banda Ilimitado"],
-      "url_pedido": "https://buho.la/store/hosting-compartido/validacion-por-dominio"
+      "incluye": [
+        "140 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
+      "url_pedido": "https://buho.la/store/hosting-compartido/validacion-por-dominio",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/399.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/3990.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/4788.00 PEN"
+        }
+      ]
     },
     {
       "nombre": "Hosting L200",
@@ -170,8 +217,25 @@
       "precio": "S/499.00",
       "moneda": "PEN",
       "ciclo": "Mensual",
-      "incluye": ["200 GB de Espacio", "Ancho de Banda Ilimitado"],
-      "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l140"
+      "incluye": [
+        "200 GB de Espacio",
+        "Ancho de Banda Ilimitado"
+      ],
+      "url_pedido": "https://buho.la/store/hosting-compartido/hosting-l140",
+      "ciclos_facturacion": [
+        {
+          "ciclo": "Mensual",
+          "precio": "S/499.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
+          "ciclo": "Anual",
+          "precio": "S/4990.00 PEN",
+          "descuento": "17%",
+          "precio_original": "S/5988.00 PEN"
+        }
+      ]
     }
   ],
   "incluido_en_cada_plan": [
