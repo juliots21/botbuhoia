@@ -49,6 +49,70 @@ function extractBasePrice(value = '') {
     return match ? cleanText(match[0]) : text;
 }
 
+function parsePriceNumber(value = '') {
+    const text = cleanText(value);
+    const m = text.match(/(\d[\d.,]*)/);
+    if (!m) return null;
+    const normalized = m[1].replace(/,/g, '');
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : null;
+}
+
+function isFreePrice(value = '') {
+    const text = cleanText(value);
+    if (!text) return false;
+    if (/gratis|free/i.test(text)) return true;
+    const num = parsePriceNumber(text);
+    return num === 0;
+}
+
+function formatPen(value) {
+    if (!Number.isFinite(value)) return '';
+    const hasDecimals = Math.abs(value % 1) > 0;
+    return hasDecimals ? `S/${value.toFixed(2)} PEN` : `S/${value.toFixed(0)} PEN`;
+}
+
+function cycleNameFromMonths(months) {
+    if (months === 1) return 'Mensual';
+    if (months === 3) return 'Trimestral';
+    if (months === 6) return 'Semi-Anual';
+    if (months === 12) return 'Anual';
+    return `${months} Meses`;
+}
+
+function cycleLabelByMonths(months) {
+    if (months === 1) return '1 Mes';
+    return `${months} Meses`;
+}
+
+function normalizeExtractedCycles(cycles = [], isFree = false) {
+    if (!Array.isArray(cycles)) return [];
+    const cleaned = mergeUniqueCycles(cycles)
+        .map((c) => ({
+            ciclo: normalizeCycleName(c.ciclo || ''),
+            precio: cleanText(c.precio || ''),
+            descuento: cleanText(c.descuento || ''),
+            precio_original: cleanText(c.precio_original || '')
+        }))
+        .filter((c) => c.ciclo && c.precio);
+
+    if (isFree) {
+        return [{
+            ciclo: 'Mensual',
+            precio: 'Gratis',
+            descuento: '',
+            precio_original: ''
+        }];
+    }
+
+    // Si vienen demasiados ciclos, suele ser señal de que tomó toda la tabla de planes.
+    if (cleaned.length > 4) {
+        return [];
+    }
+
+    return cleaned;
+}
+
 function shouldUseAnnualField(cycle = '') {
     return /anual|bianual|trienal/i.test(cycle) && !/semi-anual/i.test(cycle);
 }
@@ -61,9 +125,14 @@ function shouldUseSemiAnnualField(cycle = '') {
     return /semi-anual/i.test(cycle);
 }
 
+function shouldUseQuarterlyField(cycle = '') {
+    return /trimestral/i.test(cycle);
+}
+
 function normalizeCycleName(value = '') {
     const text = cleanText(value);
     if (/mensual/i.test(text)) return 'Mensual';
+    if (/trimestral/i.test(text)) return 'Trimestral';
     if (/semi-anual/i.test(text)) return 'Semi-Anual';
     if (/anual/i.test(text)) return 'Anual';
     if (/bianual/i.test(text)) return 'Bi-Anual';
@@ -73,7 +142,7 @@ function normalizeCycleName(value = '') {
 
 function parseCyclePriceText(text = '') {
     const flat = cleanText(text);
-    const cycleMatch = flat.match(/Mensual|Semi-Anual|Anual|Bi-Anual|Trienal(?:mente)?/i);
+    const cycleMatch = flat.match(/Mensual|Trimestral|Semi-Anual|Anual|Bi-Anual|Trienal(?:mente)?/i);
     const priceMatch = flat.match(/(?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?/i);
     const discountMatch = flat.match(/Ahorras?\s+el\s+\d+%|\d+%\s*(?:Dsto|Descuento|de ahorro)/i);
     const originalMatch = flat.match(/(?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?\s*$/i);
@@ -114,7 +183,7 @@ function escapeRegExp(value = '') {
 
 function extractCyclesFromTextBlock(text = '') {
     const cycles = [];
-    const cycleRegex = /(Mensual|Semi-Anual|Anual|Bi-Anual|Trienal(?:mente)?)\s*((?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?)(?:\s*Ahorras?\s*(?:el\s*)?(\d+%))?(?:\s*((?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?))?/gi;
+    const cycleRegex = /(Mensual|Trimestral|Semi-Anual|Anual|Bi-Anual|Trienal(?:mente)?)\s*((?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?)(?:\s*Ahorras?\s*(?:el\s*)?(\d+%))?(?:\s*((?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?))?/gi;
     let m;
     while ((m = cycleRegex.exec(text)) !== null) {
         cycles.push({
@@ -227,6 +296,40 @@ function extractFacturaloPeriods(html = '', planKey = 'essential') {
     return periods;
 }
 
+function extractFacturaloPeriodsWithDiscount(html = '', planKey = 'essential') {
+    const dataBlocks = [...String(html).matchAll(/const\s+plansData\s*=\s*\{[\s\S]*?\};/gi)].map((m) => m[0]);
+    if (dataBlocks.length === 0) return [];
+
+    // Preferir el bloque que incluya etiquetas "Dsto" (precios finales con descuento real).
+    const preferredBlock = dataBlocks.find((b) => /Dsto/i.test(b)) || dataBlocks[dataBlocks.length - 1];
+    const planRegex = new RegExp(`${planKey}\\s*:\\s*\\{[\\s\\S]*?periods\\s*:\\s*\\[([\\s\\S]*?)\\]`, 'i');
+    const planMatch = preferredBlock.match(planRegex);
+    if (!planMatch) return [];
+
+    const periodsBlock = planMatch[1];
+    const periodRegex = /\{[^}]*durationMonths\s*:\s*(\d+)[^}]*price\s*:\s*([\d.]+)[^}]*label\s*:\s*"([^"]+)"[^}]*monthlyEquivalent\s*:\s*([\d.]+)[^}]*\}/gi;
+    const periods = [];
+    let match;
+
+    while ((match = periodRegex.exec(periodsBlock)) !== null) {
+        const meses = Number(match[1]);
+        const precioOriginal = Number(match[2]);
+        const etiqueta = cleanText(match[3]);
+        const precioFinal = Number(match[4]);
+        const dsto = (etiqueta.match(/(\d+%)\s*Dsto/i) || [])[1] || '';
+
+        periods.push({
+            meses,
+            etiqueta,
+            descuento: dsto,
+            precio_original: precioOriginal,
+            precio_final: precioFinal
+        });
+    }
+
+    return periods;
+}
+
 function extractFacturaloDiscountMap(text = '', startToken = '', endToken = '') {
     if (!startToken) return {};
     const startIndex = text.toLowerCase().indexOf(startToken.toLowerCase());
@@ -275,10 +378,17 @@ async function scrapeFacturaloPro8Page(url) {
             if (name) cardInfo.push({ name, includes });
         });
 
-        const essentialPeriods = extractFacturaloPeriods(html, 'essential');
-        const priorityPeriods = extractFacturaloPeriods(html, 'priority');
-        const essentialDiscounts = extractFacturaloDiscountMap(bodyText, 'Plan Essential', 'Plan Priority');
-        const priorityDiscounts = extractFacturaloDiscountMap(bodyText, 'Plan Priority', '*Precios no incluyen');
+        let essentialPeriods = extractFacturaloPeriodsWithDiscount(html, 'essential');
+        let priorityPeriods = extractFacturaloPeriodsWithDiscount(html, 'priority');
+
+        // Preferir precios visibles del DOM (campañas activas) sobre bloques JS estáticos.
+        const browserPeriods = await scrapeFacturaloPro8PeriodsFromBrowser(url);
+        if (browserPeriods.essential.length > 0) {
+            essentialPeriods = browserPeriods.essential;
+        }
+        if (browserPeriods.priority.length > 0) {
+            priorityPeriods = browserPeriods.priority;
+        }
 
         const plans = [];
 
@@ -288,12 +398,13 @@ async function scrapeFacturaloPro8Page(url) {
                 nombre: 'Plan Essential',
                 descripcion: 'Plan extraído desde facturaloperu.com/pro8',
                 ciclos_facturacion: essentialPeriods.map((p) => ({
-                    meses: p.meses,
-                    descuento: essentialDiscounts[p.meses] || 'Oferta',
-                    precio_total: p.precio_total,
-                    moneda: 'PEN',
+                    ciclo: cycleLabelByMonths(p.meses),
+                    precio: formatPen(p.precio_final || p.precio_original),
+                    descuento: p.descuento || '',
+                    precio_original: p.precio_original ? formatPen(p.precio_original) : '',
                     incluye: includes
-                }))
+                })),
+                precio: formatPen(((essentialPeriods.find((p) => p.meses === 1) || essentialPeriods[0]).precio_final || (essentialPeriods.find((p) => p.meses === 1) || essentialPeriods[0]).precio_original)).replace(' PEN', '')
             });
         }
 
@@ -303,12 +414,13 @@ async function scrapeFacturaloPro8Page(url) {
                 nombre: 'Plan Priority',
                 descripcion: 'Plan extraído desde facturaloperu.com/pro8',
                 ciclos_facturacion: priorityPeriods.map((p) => ({
-                    meses: p.meses,
-                    descuento: priorityDiscounts[p.meses] || 'Oferta',
-                    precio_total: p.precio_total,
-                    moneda: 'PEN',
+                    ciclo: cycleLabelByMonths(p.meses),
+                    precio: formatPen(p.precio_final || p.precio_original),
+                    descuento: p.descuento || '',
+                    precio_original: p.precio_original ? formatPen(p.precio_original) : '',
                     incluye: includes
-                }))
+                })),
+                precio: formatPen(((priorityPeriods.find((p) => p.meses === 1) || priorityPeriods[0]).precio_final || (priorityPeriods.find((p) => p.meses === 1) || priorityPeriods[0]).precio_original)).replace(' PEN', '')
             });
         }
 
@@ -320,6 +432,190 @@ async function scrapeFacturaloPro8Page(url) {
         };
     } catch (error) {
         console.error(`   ❌ Error en método Facturalo: ${error.message}`);
+        return null;
+    }
+}
+
+async function scrapeFacturaloPro8PeriodsFromBrowser(url) {
+    try {
+        if (!playwright) {
+            playwright = require('playwright');
+        }
+    } catch (_) {
+        return { essential: [], priority: [] };
+    }
+
+    let browser;
+    try {
+        browser = await playwright.chromium.launch({ headless: true });
+        const context = await browser.newContext({
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        });
+        const page = await context.newPage();
+        await page.goto(`${url.replace(/\/$/, '')}/#prices`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.waitForTimeout(1800);
+
+        const data = await page.evaluate(async () => {
+            const clean = (v = '') => String(v || '').replace(/\s+/g, ' ').trim();
+            const parseMoney = (txt = '') => {
+                const all = [...String(txt || '').matchAll(/S\s*\/\.?\s*([0-9][\d.,]*)/gi)]
+                    .map((m) => Number(String(m[1]).replace(/,/g, '')))
+                    .filter((n) => Number.isFinite(n));
+                return all;
+            };
+            const parseMonths = (txt = '') => {
+                const m = String(txt || '').match(/(\d+)\s*Mes/i);
+                return m ? Number(m[1]) : null;
+            };
+
+            const cards = Array.from(document.querySelectorAll('.pricing-rates, .business-rate, .prices-section .card'));
+            const result = { essential: [], priority: [] };
+
+            for (const card of cards) {
+                const title = clean((card.querySelector('h4, h5, .title') || {}).textContent || '').toLowerCase();
+                const isEssential = /essential/.test(title);
+                const isPriority = /priority/.test(title);
+                if (!isEssential && !isPriority) continue;
+
+                const planKey = isEssential ? 'essential' : 'priority';
+                const buttons = Array.from(card.querySelectorAll('button, [role="button"], .period-item, .period, .billing-cycle button, .billing button'))
+                    .filter((b) => /(\d+)\s*Mes/i.test(clean(b.textContent || '')));
+
+                const periods = [];
+
+                for (const btn of buttons) {
+                    try { btn.click(); } catch (_) {}
+                    await new Promise((resolve) => setTimeout(resolve, 70));
+
+                    const activeText = clean(btn.textContent || '');
+                    const meses = parseMonths(activeText);
+                    if (!meses) continue;
+
+                    const cardText = clean(card.innerText || '');
+                    const numbers = parseMoney(cardText);
+                    if (numbers.length === 0) continue;
+
+                    const hasDiscount = /(\d+)%\s*Dsto/i.test(activeText) || /(\d+)%\s*Dsto/i.test(cardText);
+                    const descuento = ((activeText.match(/(\d+)%\s*Dsto/i) || cardText.match(/(\d+)%\s*Dsto/i) || [])[1] || '');
+
+                    const precioFinalNum = Math.min(...numbers);
+                    const precioOriginalNum = hasDiscount && numbers.length > 1 ? Math.max(...numbers) : null;
+
+                    periods.push({
+                        meses,
+                        etiqueta: activeText,
+                        descuento: descuento ? `${descuento}%` : '',
+                        precio_final: precioFinalNum,
+                        precio_original: precioOriginalNum
+                    });
+                }
+
+                const unique = [];
+                const seen = new Set();
+                for (const p of periods) {
+                    const key = `${p.meses}|${p.precio_final}|${p.precio_original || ''}`;
+                    if (!seen.has(key)) {
+                        seen.add(key);
+                        unique.push(p);
+                    }
+                }
+
+                unique.sort((a, b) => a.meses - b.meses);
+                result[planKey] = unique;
+            }
+
+            return result;
+        });
+
+        await context.close();
+        return {
+            essential: Array.isArray(data?.essential) ? data.essential : [],
+            priority: Array.isArray(data?.priority) ? data.priority : []
+        };
+    } catch (error) {
+        console.log(`   ⚠️  Fallback DOM Pro8 falló: ${error.message}`);
+        return { essential: [], priority: [] };
+    } finally {
+        if (browser) await browser.close();
+    }
+}
+
+async function scrapeFacturaloProxPage(url) {
+    try {
+        console.log(`\n📦 Scrapeando (método Facturalo ProX): ${url}`);
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        const html = res.data;
+        const $ = cheerio.load(html);
+        const title = cleanText($('h1').first().text()) || 'Facturalo ProX';
+        const rawText = $('body').text() || '';
+        const bodyText = cleanText(rawText);
+
+        const plans = [];
+        const planRegex = /(ESSENTIAL|PRIORITY)\s*(6|12)[\s\S]{0,260}?(S\/?\.?\s*\d[\d.,]*)/gi;
+        let match;
+
+        const extractBenefitsForPlan = (tier = '', months = '') => {
+            const marker = `${tier} ${months}`;
+            const start = rawText.toUpperCase().indexOf(marker.toUpperCase());
+            if (start < 0) return [];
+
+            const tail = rawText.slice(start + marker.length);
+            const endMatch = tail.match(/(?:ESSENTIAL\s*(?:6|12)|PRIORITY\s*(?:6|12)|\*Precios no incluyen IGV|Certificados Digitales|¿Qué significa "SE")/i);
+            const section = endMatch ? tail.slice(0, endMatch.index) : tail;
+
+            const lines = section
+                .split(/\r?\n/)
+                .map((l) => cleanText(l.replace(/[\uE000-\uF8FF]/g, '').replace(/^[-*•\u25CF\u25A0\u2713\u2714\u2717\u2718\s]+/, '')))
+                .filter(Boolean)
+                .filter((l) => l.length > 8)
+                .filter((l) => !/^S\/?\.?\s*\d/.test(l))
+                .filter((l) => !/^\(Para\s*1\s*dominio\)$/i.test(l))
+                .filter((l) => !/^(Comprar|Planes ProX|Instalaci[oó]n en tu propio servidor, c[oó]digo fuente)/i.test(l));
+
+            return dedupeStrings(lines).slice(0, 10);
+        };
+
+        while ((match = planRegex.exec(rawText)) !== null) {
+            const tier = String(match[1] || '').toUpperCase();
+            const months = Number(match[2]);
+            const price = extractBasePrice(match[3] || '');
+            const includes = extractBenefitsForPlan(tier, months);
+            plans.push({
+                nombre: `${tier} ${months}`,
+                precio: price,
+                ciclo: `${months} Meses`,
+                descripcion: `Plan ${tier} para ${months} meses (ProX SE).`,
+                incluye: includes,
+                url_pedido: 'https://wa.me/51944999965?text=Hola,%20quiero%20m%C3%A1s%20info%20sobre%20el%20facturador%20PRO%20X'
+            });
+        }
+
+        const uniquePlans = [];
+        const seen = new Set();
+        for (const p of plans) {
+            const key = normalizeKey(`${p.nombre}|${p.precio}|${p.ciclo}`);
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniquePlans.push(p);
+            }
+        }
+
+        return {
+            title,
+            description: /Sistema de gestion para Resellers y Desarrolladores/i.test(bodyText)
+                ? 'ProX(SE) orientado a resellers y desarrolladores con planes Essential y Priority.'
+                : cleanText($('.section-title p').first().text()),
+            plans: uniquePlans,
+            sourceType: 'facturalo-prox',
+            pricingNote: '*Precios no incluyen IGV. Para requerir factura aumentar el 18% del IGV. Servicio autoadministrado.'
+        };
+    } catch (error) {
+        console.error(`   ❌ Error en método Facturalo ProX: ${error.message}`);
         return null;
     }
 }
@@ -438,6 +734,99 @@ async function scrapeMozoPage(url) {
     return await scrapeSpaPricingPage(url, 'mozo-spa');
 }
 
+function isManualDocumentationUrl(url = '') {
+    return /manual\.uio\.la|manual\.pro8\.uio\.la/i.test(String(url || ''));
+}
+
+function dedupeStrings(values = []) {
+    const out = [];
+    const seen = new Set();
+    for (const item of values) {
+        const text = cleanText(item || '');
+        if (!text) continue;
+        const key = normalizeKey(text);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push(text);
+    }
+    return out;
+}
+
+function isDocumentationNoise(text = '') {
+    const value = cleanText(text);
+    if (!value) return true;
+    if (value.length < 6) return true;
+    return /(chatbuho|app android|actualizaciones|multi empresa|guias adicionales|preguntas comunes|errores sunat|admin reseller|novedades y nuevas funciones|manual de uso de diversos sistemas|pagina de inicio)/i.test(value);
+}
+
+async function scrapeDocumentationPage(url) {
+    try {
+        console.log(`\n📚 Scrapeando documentación: ${url}`);
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        const $ = cheerio.load(res.data);
+        const title = cleanText($('h1').first().text()) || cleanText($('title').first().text()) || 'Documentación';
+        const metaDescription = cleanText($('meta[name="description"]').attr('content') || '');
+
+        const paragraphs = dedupeStrings(
+            $('main p, article p, .theme-doc-markdown p, p')
+                .map((_, el) => cleanText($(el).text()))
+                .get()
+                .filter((t) => t.length >= 40)
+                .slice(0, 12)
+        );
+
+        const headings = dedupeStrings(
+            $('main h2, main h3, article h2, article h3, .theme-doc-markdown h2, .theme-doc-markdown h3, h2, h3')
+                .map((_, el) => cleanText($(el).text()))
+                .get()
+            .filter((t) => !isDocumentationNoise(t))
+                .slice(0, 24)
+        );
+
+        const bullets = dedupeStrings(
+            $('main li, article li, .theme-doc-markdown li, li')
+                .map((_, el) => cleanText($(el).text()))
+                .get()
+                .filter((t) => t.length >= 8)
+            .filter((t) => !isDocumentationNoise(t))
+                .slice(0, 40)
+        );
+
+        const links = dedupeStrings(
+            $('a[href]')
+                .map((_, el) => $(el).attr('href') || '')
+                .get()
+                .filter((href) => /^https?:\/\//i.test(href) || href.startsWith('/'))
+                .slice(0, 30)
+        );
+
+        const description = paragraphs[0] || metaDescription;
+
+        return {
+            title,
+            description,
+            plans: [],
+            sourceType: 'manual-doc',
+            docData: {
+                url,
+                titulo: title,
+                resumen: description,
+                secciones: headings,
+                puntos_clave: bullets,
+                enlaces_relacionados: links
+            }
+        };
+    } catch (error) {
+        console.error(`   ❌ Error en documentación: ${error.message}`);
+        return null;
+    }
+}
+
 function findMatchingPlan(existingPlanes, scrapedPlan) {
     const scrapedNameNorm = normalizeKey(scrapedPlan.nombre);
     const scrapedSlug = extractSlug(scrapedPlan.url_pedido);
@@ -544,20 +933,62 @@ const PRODUCTS = [
     },
     {
         url: 'https://buho.la/store/pro8',
-        jsonFile: 'pro8.json',
+        jsonFile: 'pro8_facturaloperu.json',
         name: 'Facturador Pro 8 - Perú',
-        samplePurchaseUrl: 'https://buho.la/store/pro8/pro8-essential'
+        samplePurchaseUrl: null
     },
     {
         url: 'https://facturaloperu.com/pro8/',
-        jsonFile: 'facturaloperu.json',
-        name: 'Facturalo Perú',
+        jsonFile: 'pro8_facturaloperu.json',
+        name: 'Facturalo Perú - Pro8',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://facturaloperu.com/prox/',
+        jsonFile: 'prox.json',
+        name: 'Facturalo Perú - ProX',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.pro8.uio.la/',
+        jsonFile: 'pro8_facturaloperu.json',
+        name: 'Manual Pro8',
         samplePurchaseUrl: null
     },
     {
         url: 'https://mozo.pe/',
         jsonFile: 'mozo.json',
         name: 'Mozo.pe - Perú',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.pro8.uio.la/mozo/introduccion',
+        jsonFile: 'mozo.json',
+        name: 'Mozo - Documentación Pro8',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.pro8.uio.la/vendeya/introduccion',
+        jsonFile: 'vendeya.json',
+        name: 'VendeYa - Documentación Pro8',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.uio.la/Pro7',
+        jsonFile: 'pro7.json',
+        name: 'Pro7 - Documentación',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.uio.la/Pro7/mozo/mozo-comparison',
+        jsonFile: 'pro7.json',
+        name: 'Pro7 - Mozo comparison',
+        samplePurchaseUrl: null
+    },
+    {
+        url: 'https://manual.uio.la/ProX',
+        jsonFile: 'prox.json',
+        name: 'ProX - Documentación',
         samplePurchaseUrl: null
     },
     {
@@ -594,8 +1025,16 @@ const PRODUCTS = [
  */
 async function scrapeProductPage(url) {
     try {
+        if (isManualDocumentationUrl(url)) {
+            return await scrapeDocumentationPage(url);
+        }
+
         if (/facturaloperu\.com\/pro8/i.test(url)) {
             return await scrapeFacturaloPro8Page(url);
+        }
+
+        if (/facturaloperu\.com\/prox/i.test(url)) {
+            return await scrapeFacturaloProxPage(url);
         }
 
         if (/vendeya\.pe/i.test(url)) {
@@ -762,12 +1201,81 @@ function updateProductJSON(product, productData) {
         // Actualizar precios de planes existentes si hay datos nuevos scrapeados
         const existingPlanes = Array.isArray(existingData.planes) ? existingData.planes : [];
 
-        if (productData && productData.sourceType === 'facturalo-pro8') {
+        if (productData && productData.sourceType === 'manual-doc') {
+            const docData = productData.docData || {};
+
+            if (!existingData.descripcion_general && productData.description) {
+                existingData.descripcion_general = productData.description;
+            }
+
+            if (!existingData.documentacion) {
+                existingData.documentacion = {
+                    paginas: []
+                };
+            }
+            if (!Array.isArray(existingData.documentacion.paginas)) {
+                existingData.documentacion.paginas = [];
+            }
+
+            const pageRecord = {
+                url: product.url,
+                titulo: docData.titulo || productData.title || '',
+                resumen: docData.resumen || productData.description || '',
+                secciones: Array.isArray(docData.secciones) ? docData.secciones.slice(0, 20) : [],
+                puntos_clave: Array.isArray(docData.puntos_clave) ? docData.puntos_clave.slice(0, 25) : [],
+                extraido_en: new Date().toISOString()
+            };
+
+            const existingIndex = existingData.documentacion.paginas.findIndex((p) => p.url === product.url);
+            if (existingIndex >= 0) {
+                existingData.documentacion.paginas[existingIndex] = pageRecord;
+            } else {
+                existingData.documentacion.paginas.push(pageRecord);
+            }
+
+            const keepPublicSources = ['pro7json', 'proxjson'].includes(normalizeKey(product.jsonFile));
+            if (keepPublicSources) {
+                if (!Array.isArray(existingData.fuentes_publicas)) {
+                    existingData.fuentes_publicas = [];
+                }
+                const hasSource = existingData.fuentes_publicas.some((s) => s.url === product.url);
+                if (!hasSource) {
+                    existingData.fuentes_publicas.push({
+                        fuente: 'Documentación oficial',
+                        url: product.url,
+                        evidencia: docData.titulo || productData.title || 'Página de documentación'
+                    });
+                }
+            } else if (Array.isArray(existingData.fuentes_publicas)) {
+                delete existingData.fuentes_publicas;
+            }
+
+            if (!Array.isArray(existingData.resumen_documentacion)) {
+                existingData.resumen_documentacion = [];
+            }
+            const highlights = Array.isArray(docData.puntos_clave) ? docData.puntos_clave.slice(0, 8) : [];
+            existingData.resumen_documentacion = dedupeStrings([
+                ...existingData.resumen_documentacion,
+                ...highlights
+            ]).slice(0, 40);
+
+            console.log(`   ✅ Documentación integrada en ${product.jsonFile}`);
+        } else if (productData && productData.sourceType === 'facturalo-pro8') {
             if (scrapedPlans.length > 0) {
                 existingData.planes = scrapedPlans;
                 console.log(`   ✅ Planes de Facturalo actualizados (${scrapedPlans.length})`);
             } else {
                 console.log('   ⚠️  Método Facturalo sin planes extraídos, se mantiene JSON actual.');
+            }
+        } else if (productData && productData.sourceType === 'facturalo-prox') {
+            if (scrapedPlans.length > 0) {
+                existingData.planes = scrapedPlans;
+                if (productData.pricingNote) {
+                    existingData.nota_precios = productData.pricingNote;
+                }
+                console.log(`   ✅ Planes ProX actualizados (${scrapedPlans.length})`);
+            } else {
+                console.log('   ⚠️  Método Facturalo ProX sin planes extraídos, se mantiene JSON actual.');
             }
         } else if (productData && (productData.sourceType === 'vendeya-spa' || productData.sourceType === 'mozo-spa')) {
             if (scrapedPlans.length > 0) {
@@ -781,10 +1289,30 @@ function updateProductJSON(product, productData) {
                 // Buscar plan correspondiente en el JSON existente
                 const existingPlan = findMatchingPlan(existingPlanes, scrapedPlan);
 
+                const planLooksFree =
+                    isFreePrice(scrapedPlan.precio) ||
+                    (existingPlan && isFreePrice(existingPlan.precio)) ||
+                    /gratis/i.test(cleanText(scrapedPlan.nombre));
+
+                if (existingPlan && planLooksFree) {
+                    existingPlan.precio = 'Gratis';
+                    existingPlan.ciclos_facturacion = [{
+                        ciclo: 'Mensual',
+                        precio: 'Gratis',
+                        descuento: '',
+                        precio_original: ''
+                    }];
+                    console.log(`   🔒 Plan gratis protegido (sin mezcla de otros ciclos): ${existingPlan.nombre}`);
+                    continue;
+                }
+
                 if (existingPlan && scrapedPlan.precio && scrapedPlan.precio !== 'Consultar') {
                     const normalizedPrice = extractBasePrice(scrapedPlan.precio);
                     let targetField = 'precio';
 
+                    if (existingPlan.precio_trimestral && shouldUseQuarterlyField(scrapedPlan.ciclo)) {
+                        targetField = 'precio_trimestral';
+                    } else
                     if (existingPlan.precio_semianual && shouldUseSemiAnnualField(scrapedPlan.ciclo)) {
                         targetField = 'precio_semianual';
                     } else if (existingPlan.precio_mensual && shouldUseMonthlyField(scrapedPlan.ciclo)) {
@@ -815,13 +1343,25 @@ function updateProductJSON(product, productData) {
                 }
 
                 if (existingPlan && scrapedPlan.ciclos_facturacion_extraidos && scrapedPlan.ciclos_facturacion_extraidos.length > 0) {
-                    existingPlan.ciclos_facturacion = scrapedPlan.ciclos_facturacion_extraidos.map((c) => ({
-                        ciclo: normalizeCycleName(c.ciclo),
-                        precio: c.precio || '',
-                        descuento: c.descuento || '',
-                        precio_original: c.precio_original || ''
-                    }));
-                    console.log(`   🔄 Ciclos extraídos de carrito actualizados para ${existingPlan.nombre}`);
+                    const sanitizedCycles = normalizeExtractedCycles(scrapedPlan.ciclos_facturacion_extraidos, false);
+                    if (sanitizedCycles.length > 0) {
+                        existingPlan.ciclos_facturacion = sanitizedCycles;
+                        console.log(`   🔄 Ciclos extraídos de carrito actualizados para ${existingPlan.nombre}`);
+                    } else {
+                        console.log(`   ⚠️  Ciclos descartados por mezcla/rango inválido en ${existingPlan.nombre}`);
+                    }
+                }
+            }
+
+            // Factura Fácil: agrupar por tipo de plan para evitar mezcla de tabs (Emprendedores/Profesionales).
+            if (normalizeKey(product.jsonFile) === 'facturafaciljson') {
+                for (const plan of existingPlanes) {
+                    const key = normalizeKey(plan.nombre);
+                    if (key.includes('gratis') || key.includes('f1') || key.includes('f2')) {
+                        plan.segmento = 'Emprendedores';
+                    } else if (key.includes('f3') || key.includes('f4') || key.includes('f5') || key.includes('f6') || key.includes('f7') || key.includes('f8') || key.includes('f9') || key.includes('ilimitado')) {
+                        plan.segmento = 'Profesionales';
+                    }
                 }
             }
         } else if (existingPlanes.length === 0) {
@@ -865,9 +1405,12 @@ async function main() {
                 let added = 0;
                 for (const source of extraSources.sources) {
                     if (source.enabled) {
-                        const alreadyConfigured = PRODUCTS.some((p) => normalizeKey(p.jsonFile) === normalizeKey(source.outputFile));
+                        const alreadyConfigured = PRODUCTS.some((p) =>
+                            normalizeKey(p.jsonFile) === normalizeKey(source.outputFile)
+                            && normalizeKey(p.url) === normalizeKey(source.url)
+                        );
                         if (alreadyConfigured) {
-                            console.log(`   ℹ️  Fuente extra omitida por duplicado de outputFile: ${source.outputFile}`);
+                            console.log(`   ℹ️  Fuente extra omitida por duplicado de url+outputFile: ${source.url} -> ${source.outputFile}`);
                             continue;
                         }
                         PRODUCTS.push({
@@ -908,10 +1451,24 @@ async function main() {
         // 2. Extraer ciclos de facturación reales de los enlaces "Pedir Ahora" de cada plan
         if (productData && productData.plans.length > 0) {
             for (const plan of productData.plans) {
+                const planIsFree = isFreePrice(plan.precio) || /gratis/i.test(cleanText(plan.nombre));
+                if (planIsFree) {
+                    plan.ciclos_facturacion_extraidos = [{
+                        ciclo: 'Mensual',
+                        precio: 'Gratis',
+                        descuento: '',
+                        precio_original: ''
+                    }];
+                    continue;
+                }
+
                 if (plan.url_pedido && (plan.url_pedido.includes('/store/') || plan.url_pedido.includes('/cart.php'))) {
                     const purchaseData = await scrapePurchasePage(plan.url_pedido, plan.nombre);
                     if (purchaseData && purchaseData.billingCycles && purchaseData.billingCycles.length > 0) {
-                        plan.ciclos_facturacion_extraidos = purchaseData.billingCycles;
+                        const normalizedCycles = normalizeExtractedCycles(purchaseData.billingCycles, false);
+                        if (normalizedCycles.length > 0) {
+                            plan.ciclos_facturacion_extraidos = normalizedCycles;
+                        }
                     }
                 }
                 // Esperar un poco entre requests para evitar saturar el servidor

@@ -62,16 +62,21 @@ router.post('/', (req, res) => {
         for (const message of messages) {
             const from = message.from;
             const messageId = message.id;
+            const contact = contacts.find(c => c.wa_id === from);
+            const userName = contact && contact.profile && contact.profile.name ? contact.profile.name : '';
 
             if (message.type === 'text') {
                 const text = message.text.body;
-                const contact = contacts.find(c => c.wa_id === from);
-                const userName = contact && contact.profile && contact.profile.name ? contact.profile.name : '';
                 logger.info(`[WEBHOOK] 📨 Mensaje de texto de ${from} (${userName}): "${text}"`);
 
                 // Procesamiento asíncrono optimizado con cola y dedup
                 botHandler.handleIncomingMessage(from, text, messageId, userName).catch(err => {
                     logger.error(`[BOT] Error procesando mensaje de ${from}: ${err.message}`);
+                });
+            } else if (message.type === 'image') {
+                logger.info(`[WEBHOOK] 🖼️ Imagen recibida de ${from} (${userName})`);
+                botHandler.handleIncomingImage(from, message.image || {}, messageId, userName).catch(err => {
+                    logger.error(`[BOT] Error procesando imagen de ${from}: ${err.message}`);
                 });
             } else {
                 // Manejar tipos no soportados con respuesta informativa

@@ -5,15 +5,80 @@
  */
 
 const logger = require('./logger');
+const fs = require('fs');
+const path = require('path');
+
+const RUNTIME_DIR = path.join(__dirname, '../../data/runtime');
+const DEDUP_FILE = path.join(RUNTIME_DIR, 'message_dedup.json');
 
 class MessageQueue {
     constructor() {
         this.queues = new Map(); // phone -> { processing: boolean, items: [] }
         this.processedIds = new Map(); // messageId -> timestamp (deduplicación)
         this.maxDeduplicationAge = 300000; // 5 minutos
+        this._dirty = false;
+        this._persistTimer = null;
+
+        this._hydrateFromDisk();
 
         // Limpieza de IDs procesados cada 5 minutos
         this.cleanupInterval = setInterval(() => this.cleanupProcessedIds(), 300000);
+    }
+
+    _ensureRuntimeDir() {
+        if (!fs.existsSync(RUNTIME_DIR)) {
+            fs.mkdirSync(RUNTIME_DIR, { recursive: true });
+        }
+    }
+
+    _hydrateFromDisk() {
+        try {
+            this._ensureRuntimeDir();
+            if (!fs.existsSync(DEDUP_FILE)) return;
+
+            const raw = fs.readFileSync(DEDUP_FILE, 'utf8');
+            const parsed = JSON.parse(raw || '{}');
+            const ids = parsed && typeof parsed === 'object' && parsed.processedIds ? parsed.processedIds : {};
+            const now = Date.now();
+
+            for (const [messageId, timestamp] of Object.entries(ids)) {
+                const ts = Number(timestamp);
+                if (Number.isFinite(ts) && now - ts <= this.maxDeduplicationAge) {
+                    this.processedIds.set(messageId, ts);
+                }
+            }
+        } catch (error) {
+            logger.warn(`[QUEUE] No se pudo hidratar deduplicacion persistida: ${error.message}`);
+        }
+    }
+
+    _schedulePersist() {
+        this._dirty = true;
+        if (this._persistTimer) {
+            clearTimeout(this._persistTimer);
+        }
+
+        this._persistTimer = setTimeout(() => {
+            this._persistTimer = null;
+            this._persistToDisk().catch((error) => {
+                logger.warn(`[QUEUE] Error en persistencia asincrona: ${error.message}`);
+            });
+        }, 600);
+    }
+
+    async _persistToDisk() {
+        if (!this._dirty) return;
+
+        try {
+            this._ensureRuntimeDir();
+            const payload = {
+                processedIds: Object.fromEntries(this.processedIds.entries())
+            };
+            await fs.promises.writeFile(DEDUP_FILE, JSON.stringify(payload, null, 2), 'utf8');
+            this._dirty = false;
+        } catch (error) {
+            logger.warn(`[QUEUE] No se pudo persistir deduplicacion: ${error.message}`);
+        }
     }
 
     /**
@@ -27,6 +92,7 @@ class MessageQueue {
             return true;
         }
         this.processedIds.set(messageId, Date.now());
+        this._schedulePersist();
         return false;
     }
 
@@ -99,6 +165,7 @@ class MessageQueue {
 
         if (cleaned > 0) {
             logger.debug(`[QUEUE] Limpieza: ${cleaned} IDs de deduplicación expirados`);
+            this._schedulePersist();
         }
     }
 
@@ -118,8 +185,13 @@ class MessageQueue {
         };
     }
 
-    destroy() {
+    async destroy() {
         clearInterval(this.cleanupInterval);
+        if (this._persistTimer) {
+            clearTimeout(this._persistTimer);
+            this._persistTimer = null;
+        }
+        await this._persistToDisk();
     }
 }
 

@@ -6,10 +6,13 @@ const metrics = require('./src/utils/metrics');
 const webhookRoutes = require('./src/handlers/webhook');
 const adminApiRoutes = require('./src/handlers/admin_api');
 const { validateMetaSignature, captureRawBody } = require('./src/middleware/security');
+const { validateAdminApiToken, getAdminAuthMode } = require('./src/middleware/admin_auth');
 const geminiService = require('./src/services/gemini_service');
 const botHandler = require('./src/handlers/bot_handler');
 const rateLimiter = require('./src/utils/rate_limiter');
 const messageQueue = require('./src/utils/message_queue');
+const mysqlService = require('./src/services/mysql_service');
+const userSettingsService = require('./src/services/user_settings_service');
 
 // Inicializar la aplicación Express
 const app = express();
@@ -41,7 +44,20 @@ app.get('/health', (req, res) => {
             rateLimiter: rateLimiter.getStats(),
             queue: messageQueue.getStats()
         };
-        res.json(report);
+        mysqlService.health()
+            .then((mysqlStatus) => {
+                report.services.mysql = mysqlStatus;
+                res.json(report);
+            })
+            .catch((error) => {
+                report.services.mysql = {
+                    configured: false,
+                    connected: false,
+                    error: error.message,
+                    lastConnectedAt: null
+                };
+                res.json(report);
+            });
     } catch (error) {
         logger.error(`[HEALTH] Error generando reporte: ${error.message}`);
         res.status(500).json({ status: 'error', message: error.message });
@@ -49,7 +65,7 @@ app.get('/health', (req, res) => {
 });
 
 // API de administración (configuración en caliente)
-app.use('/api', adminApiRoutes);
+app.use('/api', validateAdminApiToken, adminApiRoutes);
 
 // Webhook routes
 app.use('/webhook', webhookRoutes);
@@ -64,38 +80,72 @@ const server = app.listen(config.port, host, () => {
     logger.info(`🔗 Webhook: /webhook (GET verificación / POST eventos)`);
     logger.info(`📊 Health:  /health (Métricas y estado del sistema)`);
     logger.info(`🔧 API:     /api/config (GET / PUT configuración)`);
+    const adminAuth = getAdminAuthMode();
+    if (adminAuth.enabled) {
+        logger.info(`🔐 Admin API auth: ACTIVADA (${adminAuth.usingDevFallback ? 'token dev fallback' : 'token configurado'})`);
+        if (adminAuth.usingDevFallback && adminAuth.fallbackToken) {
+            logger.warn('🔐 Admin API token fallback activo (solo desarrollo).');
+        }
+    } else {
+        logger.error('🔐 Admin API auth: DESACTIVADA por configuracion. La API /api respondera 503 hasta configurar ADMIN_API_TOKEN.');
+    }
     logger.info(`🔑 API Keys Gemini configuradas: ${config.gemini.apiKeys.length}`);
     logger.info(`🛡️  Seguridad HMAC: ${config.security.appSecret ? 'ACTIVADA' : 'DESACTIVADA (modo desarrollo)'}`);
     logger.info(`⚡ Rate Limiting: ${config.rateLimiting.maxMessagesPerWindow} msgs/${config.rateLimiting.windowSizeMs / 1000}s`);
-    logger.info(`📝 Chunking: ${config.whatsapp.chunking.enabled ? 'ACTIVADO' : 'DESACTIVADO'} (max ${config.whatsapp.chunking.maxChunkLength} chars/chunk)`);
+    (async () => {
+        const connected = await mysqlService.connect();
+        logger.info(`🗄️  MySQL: ${connected ? 'CONECTADO' : 'NO CONECTADO (revisa DB_*)'}`);
+
+        if (connected) {
+            await userSettingsService.initialize();
+            await userSettingsService.persistGlobalConversation('server_bootstrap');
+        }
+    })().catch((error) => {
+        logger.error(`[STARTUP] Error inicializando persistencia MySQL: ${error.message}`);
+    });
     logger.info(`=======================================================`);
 });
+
+let isShuttingDown = false;
+let shutdownForceTimer = null;
 
 // ═══════════════════════════════════════════════════════
 // GRACEFUL SHUTDOWN — Cierre limpio del servidor
 // ═══════════════════════════════════════════════════════
 
 function gracefulShutdown(signal) {
+    if (isShuttingDown) {
+        logger.warn(`[SHUTDOWN] Señal ${signal} ignorada: cierre ya en progreso.`);
+        return;
+    }
+    isShuttingDown = true;
+
     logger.info(`[SHUTDOWN] Señal ${signal} recibida. Iniciando cierre limpio...`);
 
-    server.close(() => {
+    server.close(async () => {
         logger.info('[SHUTDOWN] Servidor HTTP cerrado.');
 
         try {
-            rateLimiter.destroy();
-            messageQueue.destroy();
+            await rateLimiter.destroy();
+            await messageQueue.destroy();
             metrics.destroy();
-            botHandler.destroy();
+            await botHandler.destroy();
+            await mysqlService.close();
             logger.info('[SHUTDOWN] Recursos limpiados correctamente.');
         } catch (error) {
             logger.error(`[SHUTDOWN] Error limpiando recursos: ${error.message}`);
+        }
+
+        if (shutdownForceTimer) {
+            clearTimeout(shutdownForceTimer);
+            shutdownForceTimer = null;
         }
 
         logger.info('[SHUTDOWN] ✓ Cierre limpio completado. Adiós. 🦉');
         process.exit(0);
     });
 
-    setTimeout(() => {
+    shutdownForceTimer = setTimeout(() => {
         logger.error('[SHUTDOWN] Cierre forzado por timeout (10s).');
         process.exit(1);
     }, 10000);
@@ -111,4 +161,5 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason) => {
     logger.error(`[CRITICAL] Promesa rechazada no manejada: ${reason}`);
+    gracefulShutdown('unhandledRejection');
 });

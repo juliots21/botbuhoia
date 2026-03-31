@@ -5,6 +5,8 @@ const metrics = require('../utils/metrics');
 const rateLimiter = require('../utils/rate_limiter');
 const messageQueue = require('../utils/message_queue');
 const config = require('../../config');
+const userSettingsService = require('../services/user_settings_service');
+const conversationStoreService = require('../services/conversation_store_service');
 const { InMemoryChatMessageHistory: ChatMessageHistory } = require("@langchain/core/chat_history");
 
 // Historial en memoria (En producción: usar DB como Redis/Mongo)
@@ -14,9 +16,48 @@ class BotHandler {
     constructor() {
         // Ejecutar limpiador de memoria periódicamente
         this.cleanupInterval = setInterval(
-            () => this.cleanupConversations(),
+            () => {
+                this.cleanupConversations().catch((error) => {
+                    logger.warn(`[BOT] Error en limpieza de conversaciones: ${error.message}`);
+                });
+            },
             config.conversation.inactivityTimeoutMs / 2
         );
+    }
+
+    async _getOrCreateConversation(userPhone) {
+        let history = userConversations.get(userPhone);
+        if (history) return history;
+
+        const chatHistory = new ChatMessageHistory();
+        const persisted = await conversationStoreService.hydrateChatHistory(userPhone, chatHistory);
+        history = {
+            chatHistory,
+            lastActivity: persisted.lastActivity || Date.now(),
+            messageCount: persisted.messageCount || 0
+        };
+        userConversations.set(userPhone, history);
+        return history;
+    }
+
+    async _trimHistoryWindow(history, userPhone) {
+        const maxMessages = config.conversation.maxHistoryMessages;
+        const currentMessages = await history.chatHistory.getMessages();
+        logger.info(`[BOT] Contexto de memoria para ${userPhone}: ${currentMessages.length} mensajes cargados.`);
+        if (currentMessages.length <= maxMessages) return;
+
+        await history.chatHistory.clear();
+        const subset = currentMessages.slice(currentMessages.length - maxMessages);
+        for (const msg of subset) {
+            await history.chatHistory.addMessage(msg);
+        }
+    }
+
+    async _persistConversationState(userPhone, history) {
+        await conversationStoreService.persistChatHistory(userPhone, history.chatHistory, {
+            lastActivity: history.lastActivity,
+            messageCount: history.messageCount
+        });
     }
 
     /**
@@ -24,10 +65,11 @@ class BotHandler {
      * - Deduplicación de mensajes
      * - Rate limiting por usuario
      * - Cola secuencial por usuario
-     * - markAsRead + typing en paralelo
-     * - Envío chunkeado progresivo
+        * - markAsRead temprano
      */
     async handleIncomingMessage(userPhone, messageText, messageId, userName = '') {
+        userSettingsService.touchUser(userPhone, userName);
+
         // 1. Deduplicación — ignorar mensajes que ya procesamos
         if (messageQueue.isDuplicate(messageId)) {
             metrics.increment('duplicateMessages');
@@ -36,9 +78,12 @@ class BotHandler {
         }
 
         metrics.increment('messagesReceived');
+        metrics.trackUserReceived(userPhone, userName);
+        userSettingsService.markMessageReceived(userPhone);
 
         // 2. Rate limiting — verificar límite de mensajes por usuario
-        const rateCheck = rateLimiter.check(userPhone);
+        const userConfig = userSettingsService.getUserSettings(userPhone);
+        const rateCheck = rateLimiter.check(userPhone, userConfig.rateLimiting);
         if (!rateCheck.allowed) {
             metrics.increment('rateLimitHits');
             logger.warn(`[BOT] Rate limit para ${userPhone}. Reintento en ${rateCheck.retryAfterMs}ms`);
@@ -57,6 +102,38 @@ class BotHandler {
         });
     }
 
+    async handleIncomingImage(userPhone, imagePayload, messageId, userName = '') {
+        userSettingsService.touchUser(userPhone, userName);
+
+        if (messageQueue.isDuplicate(messageId)) {
+            metrics.increment('duplicateMessages');
+            logger.debug(`[BOT] Imagen duplicada ignorada: ${messageId} de ${userPhone}`);
+            return;
+        }
+
+        metrics.increment('messagesReceived');
+        metrics.trackUserReceived(userPhone, userName);
+        userSettingsService.markMessageReceived(userPhone);
+
+        const userConfig = userSettingsService.getUserSettings(userPhone);
+        const rateCheck = rateLimiter.check(userPhone, userConfig.rateLimiting);
+        if (!rateCheck.allowed) {
+            metrics.increment('rateLimitHits');
+            logger.warn(`[BOT] Rate limit para imagen de ${userPhone}. Reintento en ${rateCheck.retryAfterMs}ms`);
+            await whatsappService.sendMessage(
+                userPhone,
+                'Estas enviando mensajes muy rapido. Espera unos segundos y vuelve a enviar la imagen por favor.'
+            );
+            return;
+        }
+
+        messageQueue.enqueue(userPhone, () =>
+            this._processImageMessage(userPhone, imagePayload, messageId, userName)
+        ).catch(err => {
+            logger.error(`[BOT] Error en cola de imagen para ${userPhone}: ${err.message}`);
+        });
+    }
+
     /**
      * Procesamiento real del mensaje (ejecutado secuencialmente por la cola)
      */
@@ -66,63 +143,134 @@ class BotHandler {
         try {
             logger.debug(`[BOT] Procesando mensaje de ${userPhone}...`);
 
-            // OPTIMIZACIÓN CLAVE: Ejecutar markAsRead y typing en PARALELO
-            // El usuario ve el doble check azul y "escribiendo..." casi instantáneamente
-            await Promise.all([
-                whatsappService.markAsRead(messageId),
-                whatsappService.setTypingStatus(userPhone)
-            ]);
+            // Marcar lectura temprano para confirmar recepcion al usuario.
+            await whatsappService.markAsRead(messageId);
 
             // Extraer historial del usuario para contexto
-            let history = userConversations.get(userPhone);
-            if (!history) {
-                history = {
-                    chatHistory: new ChatMessageHistory(),
-                    lastActivity: Date.now(),
-                    messageCount: 0
-                };
-                userConversations.set(userPhone, history);
+            const history = await this._getOrCreateConversation(userPhone);
+
+            const normalizedMessage = String(messageText || '').trim().toLowerCase();
+            if (normalizedMessage === 'newchatgg') {
+                await history.chatHistory.clear();
+                history.lastActivity = Date.now();
+                history.messageCount = 0;
+                await conversationStoreService.clearUserHistory(userPhone);
+
+                const resetReply = 'Listo, reinicie esta conversacion desde cero. Empezamos nuevamente 😊';
+                await whatsappService.sendMessage(userPhone, resetReply);
+                metrics.increment('whatsappMessagesSent');
+
+                const latency = Date.now() - startTime;
+                metrics.increment('messagesProcessed');
+                metrics.trackUserProcessed(userPhone, latency, userName);
+                userSettingsService.markMessageProcessed(userPhone, latency);
+                logger.info(`[BOT] Historial reiniciado para ${userPhone} via comando newchatgg`);
+                return;
             }
 
             // Generar respuesta con Gemini y memoria LangChain
-            const responseText = await geminiService.generateResponse(messageText, history.chatHistory, userName);
+            const userConfig = userSettingsService.getUserSettings(userPhone);
+            const responseText = await geminiService.generateResponse(
+                messageText,
+                history.chatHistory,
+                userName,
+                userConfig.gemini,
+                userPhone
+            );
 
             // Gestionar límite de historial (mantener solo los últimos N mensajes, equivalente a BufferWindowMemory)
-            const maxMessages = config.conversation.maxHistoryMessages;
-            const currentMessages = await history.chatHistory.getMessages();
-            logger.info(`[BOT] Contexto de memoria para ${userPhone}: ${currentMessages.length} mensajes cargados.`);
-            if (currentMessages.length > maxMessages) {
-                await history.chatHistory.clear();
-                const subset = currentMessages.slice(currentMessages.length - maxMessages);
-                for (const msg of subset) {
-                    await history.chatHistory.addMessage(msg);
-                }
-            }
+            await this._trimHistoryWindow(history, userPhone);
 
             history.lastActivity = Date.now();
             history.messageCount++;
 
-            // ENVÍO PROGRESIVO — Simula efecto "escribiendo" estilo ChatGPT
-            // Divide la respuesta en fragmentos y los envía con delay
-            logger.debug(`[BOT] Emitiendo respuesta progresiva a ${userPhone}...`);
-            await whatsappService.sendMessageChunked(userPhone, responseText);
+            await this._persistConversationState(userPhone, history);
+
+            await whatsappService.sendMessage(userPhone, responseText);
+            metrics.increment('whatsappMessagesSent');
 
             const latency = Date.now() - startTime;
             metrics.increment('messagesProcessed');
+            metrics.trackUserProcessed(userPhone, latency, userName);
+            userSettingsService.markMessageProcessed(userPhone, latency);
             logger.info(`[BOT] ✓ Flujo completado para ${userPhone} en ${latency}ms`);
 
         } catch (error) {
             metrics.increment('messagesFailed');
+            metrics.trackUserFailed(userPhone, userName);
+            metrics.recordError('bot_handler', error.message, { phone: userPhone });
+            userSettingsService.markMessageFailed(userPhone);
             logger.error(`[BOT] Error procesando mensaje de ${userPhone}. Detalles: ${error.stack}`);
 
             // Respuesta de emergencia
             try {
                 await whatsappService.sendMessage(
                     userPhone,
-                    "Disculpa, acabo de tener un pequeño tropiezo procesando tu mensaje. ¿Podrías volver a intentarlo, por favor? 🦉"
+                    "Disculpa, acabo de tener un pequeño tropiezo procesando tu mensaje. ¿Podrías volver a intentarlo, por favor? 😊"
                 );
             } catch (waError) {
                 logger.error(`[BOT] Ni la respuesta de emergencia pudo enviarse a ${userPhone}. ${waError.message}`);
+            }
+        }
+    }
+
+    async _processImageMessage(userPhone, imagePayload, messageId, userName = '') {
+        const startTime = Date.now();
+
+        try {
+            logger.debug(`[BOT] Procesando imagen de ${userPhone}...`);
+            await whatsappService.markAsRead(messageId);
+
+            const history = await this._getOrCreateConversation(userPhone);
+
+            const mediaId = String(imagePayload?.id || '').trim();
+            const caption = String(imagePayload?.caption || '').trim();
+            if (!mediaId) {
+                await whatsappService.sendMessage(userPhone, 'NO VALIDADO ❌\nMotivo: No se recibio un archivo de imagen valido.');
+                return;
+            }
+
+            const media = await whatsappService.downloadMediaAsBase64(mediaId);
+            const validationReply = await geminiService.validatePaymentProof(
+                {
+                    base64: media.base64,
+                    mimeType: media.mimeType,
+                    fileSizeBytes: media.fileSizeBytes,
+                    caption
+                },
+                {
+                    chatHistory: history.chatHistory,
+                    userPhone
+                }
+            );
+
+            history.lastActivity = Date.now();
+            history.messageCount++;
+
+            await this._persistConversationState(userPhone, history);
+
+            await whatsappService.sendMessage(userPhone, validationReply);
+            metrics.increment('whatsappMessagesSent');
+
+            const latency = Date.now() - startTime;
+            metrics.increment('messagesProcessed');
+            metrics.trackUserProcessed(userPhone, latency, userName);
+            userSettingsService.markMessageProcessed(userPhone, latency);
+            logger.info(`[BOT] ✓ Validacion de imagen completada para ${userPhone} en ${latency}ms`);
+        } catch (error) {
+            metrics.increment('messagesFailed');
+            metrics.trackUserFailed(userPhone, userName);
+            metrics.recordError('bot_handler_image', error.message, { phone: userPhone });
+            userSettingsService.markMessageFailed(userPhone);
+            logger.error(`[BOT] Error procesando imagen de ${userPhone}. Detalles: ${error.stack}`);
+
+            try {
+                await whatsappService.sendMessage(
+                    userPhone,
+                    'NO VALIDADO ❌\nMotivo: No se pudo completar la revision del comprobante. Envia una foto mas clara y centrada, por favor.'
+                );
+            } catch (waError) {
+                logger.error(`[BOT] No se pudo enviar error de validacion de imagen a ${userPhone}. ${waError.message}`);
             }
         }
     }
@@ -133,7 +281,10 @@ class BotHandler {
     async handleUnsupportedMessage(userPhone, messageType, messageId) {
         if (messageQueue.isDuplicate(messageId)) return;
 
+        userSettingsService.touchUser(userPhone);
+        userSettingsService.markMessageReceived(userPhone);
         metrics.increment('messagesReceived');
+        metrics.trackUserReceived(userPhone);
         await whatsappService.markAsRead(messageId);
 
         const typeNames = {
@@ -149,14 +300,14 @@ class BotHandler {
         const typeName = typeNames[messageType] || `mensajes de tipo "${messageType}"`;
         await whatsappService.sendMessage(
             userPhone,
-            `Por el momento solo puedo procesar mensajes de texto ✍️. Todavía no tengo la habilidad de entender ${typeName}, pero estoy aprendiendo. ¡Escríbeme tu consulta y con gusto te ayudo! 🦉`
+            `Por el momento solo puedo procesar mensajes de texto ✍️. Todavía no tengo la habilidad de entender ${typeName}, pero estoy aprendiendo. ¡Escríbeme tu consulta y con gusto te ayudo! 😊`
         );
     }
 
     /**
      * Limpia historial de conversaciones inactivas
      */
-    cleanupConversations() {
+    async cleanupConversations() {
         const now = Date.now();
         const timeout = config.conversation.inactivityTimeoutMs;
         let deleted = 0;
@@ -171,6 +322,8 @@ class BotHandler {
         if (deleted > 0) {
             logger.debug(`[BOT] Tarea de fondo: Se limpió el contexto de ${deleted} chats inactivos.`);
         }
+
+        await conversationStoreService.pruneExpired(timeout);
     }
 
     /**
@@ -180,12 +333,18 @@ class BotHandler {
         return {
             activeConversations: userConversations.size,
             totalMessages: Array.from(userConversations.values())
-                .reduce((acc, v) => acc + v.messageCount, 0)
+                .reduce((acc, v) => acc + v.messageCount, 0),
+            users: userSettingsService.listUsers()
         };
     }
 
-    destroy() {
+    getUsers() {
+        return userSettingsService.listUsers();
+    }
+
+    async destroy() {
         clearInterval(this.cleanupInterval);
+        await conversationStoreService.destroy();
     }
 }
 

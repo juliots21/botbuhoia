@@ -9,7 +9,6 @@ class WhatsAppService {
         this.token = config.whatsapp.token;
         this.phoneNumberId = config.whatsapp.phoneNumberId;
         this.apiUrl = config.whatsapp.apiUrl;
-        this.chunkConfig = config.whatsapp.chunking;
         this.retryConfig = config.whatsapp.retry;
 
         // Instancia Axios reutilizable con keep-alive y headers pre-configurados
@@ -45,74 +44,6 @@ class WhatsAppService {
     }
 
     /**
-     * Envía el indicador de "escribiendo..." al usuario
-     * Esto hace que en WhatsApp aparezca la burbuja con los 3 puntitos
-     */
-    async sendTypingIndicator(to) {
-        if (!this.token || !this.phoneNumberId) return;
-
-        try {
-            await this.client.post('/messages', {
-                messaging_product: "whatsapp",
-                recipient_type: "individual",
-                to: to,
-                type: "reaction",
-                // WhatsApp Cloud API no tiene un endpoint de "typing" directo,
-                // pero podemos usar el status 'typing' via el endpoint de presencia
-            });
-        } catch (error) {
-            // Silenciar errores del typing indicator — no es crítico
-            logger.debug(`[WHATSAPP] No se pudo enviar typing indicator a ${to}: ${error.message}`);
-        }
-    }
-
-    /**
-     * Marca la presencia como "escribiendo" usando la API de mensajes
-     * Meta WhatsApp Cloud API no expone un typing endpoint público,
-     * por lo que se simula de forma progresiva
-     */
-    async setTypingStatus(to) {
-        if (!this.token || !this.phoneNumberId) return;
-
-        // No hay un endpoint directo de typing en la Cloud API de Meta.
-        // El efecto de "escribiendo" se logra enviando mensajes progresivos.
-        logger.debug(`[WHATSAPP] Typing status activado para ${to}`);
-    }
-
-    /**
-     * Envía un mensaje largo dividido en chunks progresivos
-     * Simula el efecto de escritura progresiva estilo ChatGPT
-     */
-    async sendMessageChunked(to, fullText) {
-        if (!this.chunkConfig.enabled || !fullText || fullText.length <= this.chunkConfig.maxChunkLength) {
-            return this.sendMessage(to, fullText);
-        }
-
-        const chunks = this._splitIntoChunks(fullText);
-        logger.info(`[WHATSAPP] Enviando respuesta en ${chunks.length} fragmentos a ${to}`);
-
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-
-            // Enviar indicador typing antes de cada chunk (excepto el primero, ya se envió antes)
-            if (i > 0) {
-                await this._sleep(this.chunkConfig.typingIndicatorMs);
-            }
-
-            // Enviar el fragmento
-            await this.sendMessage(to, chunk);
-            metrics.increment('whatsappMessagesSent');
-
-            // Delay entre chunks para simular velocidad de escritura humana
-            if (i < chunks.length - 1) {
-                await this._sleep(this.chunkConfig.delayBetweenChunksMs);
-            }
-        }
-
-        logger.info(`[WHATSAPP] ✓ Respuesta completa enviada a ${to} (${chunks.length} fragmentos)`);
-    }
-
-    /**
      * Marca un mensaje como leído (doble check azul)
      */
     async markAsRead(messageId) {
@@ -130,65 +61,57 @@ class WhatsAppService {
         }
     }
 
-    /**
-     * Divide un texto largo en chunks inteligentes
-     * Respeta límites de palabras, párrafos y listas
-     */
-    _splitIntoChunks(text) {
-        const maxLen = this.chunkConfig.maxChunkLength;
-        const chunks = [];
-
-        // Primero intentar dividir por párrafos (doble salto de línea)
-        const paragraphs = text.split(/\n\n+/);
-
-        let currentChunk = '';
-
-        for (const paragraph of paragraphs) {
-            // Si el párrafo solo ya excede el máximo, dividirlo por oraciones
-            if (paragraph.length > maxLen) {
-                // Guardar chunk actual si tiene contenido
-                if (currentChunk.trim()) {
-                    chunks.push(currentChunk.trim());
-                    currentChunk = '';
-                }
-
-                // Dividir párrafo largo por líneas primero
-                const lines = paragraph.split('\n');
-                for (let line of lines) {
-                    // Si la línea sigue siendo muy larga, intentar dividir por puntos seguidos de espacio
-                    if (line.length > maxLen) {
-                        const sentences = line.match(/[^.!?]+([.!?]+(?=\s|$)|$)/g) || [line];
-                        for (const sentence of sentences) {
-                            if ((currentChunk + sentence).length > maxLen && currentChunk.trim()) {
-                                chunks.push(currentChunk.trim());
-                                currentChunk = sentence;
-                            } else {
-                                currentChunk += sentence;
-                            }
-                        }
-                    } else {
-                        if ((currentChunk + '\n' + line).length > maxLen && currentChunk.trim()) {
-                            chunks.push(currentChunk.trim());
-                            currentChunk = line;
-                        } else {
-                            currentChunk += (currentChunk ? '\n' : '') + line;
-                        }
-                    }
-                }
-            } else if ((currentChunk + '\n\n' + paragraph).length > maxLen && currentChunk.trim()) {
-                chunks.push(currentChunk.trim());
-                currentChunk = paragraph;
-            } else {
-                currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
-            }
+    async getMediaInfo(mediaId) {
+        if (!mediaId) {
+            throw new WhatsAppAPIError('Media ID no proporcionado');
         }
 
-        // Agregar el último chunk
-        if (currentChunk.trim()) {
-            chunks.push(currentChunk.trim());
+        if (!this.token) {
+            throw new WhatsAppAPIError('Token de WhatsApp no configurado para descargar media');
         }
 
-        return chunks.length > 0 ? chunks : [text];
+        try {
+            const response = await axios.get(`${this.apiUrl}/${mediaId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                },
+                timeout: 15000
+            });
+
+            return response.data;
+        } catch (error) {
+            const detail = error.response ? JSON.stringify(error.response.data) : error.message;
+            throw new WhatsAppAPIError(`No se pudo obtener metadata de media: ${detail}`, error);
+        }
+    }
+
+    async downloadMediaAsBase64(mediaId) {
+        const info = await this.getMediaInfo(mediaId);
+        const mediaUrl = info?.url;
+        if (!mediaUrl) {
+            throw new WhatsAppAPIError('No se recibio URL de descarga para la media');
+        }
+
+        try {
+            const response = await axios.get(mediaUrl, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                },
+                responseType: 'arraybuffer',
+                timeout: 30000
+            });
+
+            const buffer = Buffer.from(response.data);
+            return {
+                base64: buffer.toString('base64'),
+                mimeType: info?.mime_type || response.headers['content-type'] || 'image/jpeg',
+                fileSizeBytes: Number(info?.file_size || buffer.length || 0),
+                sha256: info?.sha256 || ''
+            };
+        } catch (error) {
+            const detail = error.response ? JSON.stringify(error.response.data) : error.message;
+            throw new WhatsAppAPIError(`No se pudo descargar media: ${detail}`, error);
+        }
     }
 
     /**
@@ -222,6 +145,7 @@ class WhatsAppService {
                 if (statusCode && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
                     logger.error(`[WHATSAPP] Error ${statusCode} no reintentable enviando a ${to}: ${errorData}`);
                     metrics.increment('whatsappErrors');
+                    metrics.recordError('whatsapp', `Error ${statusCode}: ${errorData}`, { phone: to, statusCode });
                     throw new WhatsAppAPIError(`Error ${statusCode}: ${errorData}`, error);
                 }
 
@@ -230,6 +154,7 @@ class WhatsAppService {
         }
 
         metrics.increment('whatsappErrors');
+        metrics.recordError('whatsapp', `Falló después de ${this.retryConfig.maxRetries} reintentos`, { phone: to });
         throw new WhatsAppAPIError(`Falló después de ${this.retryConfig.maxRetries} reintentos`, lastError);
     }
 

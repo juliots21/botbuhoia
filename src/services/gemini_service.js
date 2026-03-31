@@ -1,6 +1,6 @@
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 const { ChatPromptTemplate, MessagesPlaceholder } = require("@langchain/core/prompts");
-const { RunnableWithMessageHistory } = require("@langchain/core/runnables");
+const { HumanMessage, AIMessage } = require("@langchain/core/messages");
 const config = require('../../config');
 const logger = require('../utils/logger');
 const metrics = require('../utils/metrics');
@@ -10,9 +10,20 @@ const { GeminiAPIError } = require('../utils/error_handler');
 class GeminiService {
     constructor() {
         this.apiKeys = config.gemini.apiKeys;
-        this.generationConfig = config.gemini.generationConfig;
-        this.timeout = config.gemini.timeout;
-        this.circuitBreakerConfig = config.gemini.circuitBreaker;
+        this.defaultGenerationConfig = config.gemini.generationConfig;
+        this.defaultTimeout = config.gemini.timeout;
+        this.totalTimeoutMs = Math.max(Number(config.gemini.totalTimeoutMs || 70000), 60000);
+        this.maxAttemptsPerMessage = Math.max(Number(config.gemini.maxAttemptsPerMessage || 2), 1);
+        this.maxKnowledgePromptChars = Number.isFinite(config.gemini.maxKnowledgePromptChars)
+            ? config.gemini.maxKnowledgePromptChars
+            : 0;
+        this.initialKnowledgePromptChars = Math.max(Number(config.gemini.initialKnowledgePromptChars || 3800), 1200);
+        this.retryKnowledgePromptChars = Math.max(Number(config.gemini.retryKnowledgePromptChars || 2200), 900);
+        this.initialHistoryWindow = Math.min(Math.max(Number(config.gemini.initialHistoryWindow || 10), 6), 30);
+        this.retryHistoryWindow = Math.min(Math.max(Number(config.gemini.retryHistoryWindow || 4), 4), 20);
+        this.maxMessageCharsInHistory = Math.max(Number(config.gemini.maxMessageCharsInHistory || 900), 300);
+        this.defaultCircuitBreakerConfig = config.gemini.circuitBreaker;
+        this._warnedKnowledgeTruncation = false;
 
         if (this.apiKeys.length === 0) {
             logger.warn('[GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.');
@@ -22,92 +33,1354 @@ class GeminiService {
 
         // Inicializar modelos LangChain y estado de circuit breaker por key
         this.keys = this.apiKeys.map((key, index) => {
+            const label = this.maskKey(key);
             return {
                 index,
-                model: new ChatGoogleGenerativeAI({
-                    model: config.gemini.model || "gemini-1.5-flash",
-                    apiKey: key,
-                    maxOutputTokens: this.generationConfig.maxOutputTokens,
-                    temperature: this.generationConfig.temperature,
-                    topP: this.generationConfig.topP
-                }),
+                apiKey: key,
+                label,
                 failures: 0,
                 disabledUntil: 0, // Timestamp cuando se reactiva
                 totalCalls: 0,
-                totalErrors: 0
+                totalErrors: 0,
+                lastError: null,
+                lastErrorAt: 0,
+                lastUsedAt: 0
             };
         });
+
+        this.lastCutoff = null;
+        this.lastRequestDebug = null;
+    }
+
+    maskKey(apiKey = '') {
+        const key = String(apiKey || '');
+        if (key.length <= 10) return key ? `${key.slice(0, 4)}***` : 'N/A';
+        return `${key.slice(0, 6)}...${key.slice(-4)}`;
+    }
+
+    _resolveRuntimeConfig(userGeminiConfig = null) {
+        const baseTimeout = userGeminiConfig?.timeout ?? this.defaultTimeout;
+        const requestedMaxTokens = Number(
+            userGeminiConfig?.maxOutputTokens ?? this.defaultGenerationConfig.maxOutputTokens
+        );
+        const safeMaxOutputTokens = Number.isFinite(requestedMaxTokens)
+            ? Math.max(800, Math.min(requestedMaxTokens, 1400))
+            : 1100;
+
+        return {
+            generation: {
+                temperature: userGeminiConfig?.temperature ?? this.defaultGenerationConfig.temperature,
+                maxOutputTokens: safeMaxOutputTokens,
+                topP: this.defaultGenerationConfig.topP
+            },
+            timeout: Math.max(Number(baseTimeout || 0), 18000),
+            circuitBreaker: {
+                failureThreshold: userGeminiConfig?.failureThreshold ?? this.defaultCircuitBreakerConfig.failureThreshold,
+                recoveryTimeMs: userGeminiConfig?.recoveryTimeMs ?? this.defaultCircuitBreakerConfig.recoveryTimeMs
+            }
+        };
+    }
+
+    _buildModel(keyData, runtimeConfig) {
+        return new ChatGoogleGenerativeAI({
+            model: config.gemini.model || 'gemini-1.5-flash',
+            apiKey: keyData.apiKey,
+            maxOutputTokens: runtimeConfig.generation.maxOutputTokens,
+            temperature: runtimeConfig.generation.temperature,
+            topP: runtimeConfig.generation.topP
+        });
+    }
+
+
+    async _buildScopedKnowledge(userMessage = '', maxProducts = 3, options = {}) {
+        const matches = await knowledgeLoader.findProductsByQuery(userMessage, maxProducts);
+        if (!matches.length) return '';
+        const includeContact = options?.includeContact !== false;
+
+        const blocks = [];
+        for (const item of matches.slice(0, maxProducts)) {
+            const data = item?.data || {};
+            const planCyclesSummary = Array.isArray(data.planes)
+                ? data.planes.map((plan) => ({
+                    plan: plan?.nombre || '',
+                    ciclos: Array.isArray(plan?.ciclos_facturacion)
+                        ? plan.ciclos_facturacion.map((c) => ({
+                            ciclo: c?.ciclo || '',
+                            precio_final: c?.precio || '',
+                            descuento: c?.descuento || '',
+                            precio_lista_referencial: c?.precio_original || ''
+                        }))
+                        : []
+                }))
+                : [];
+
+            const compact = {
+                sitio: item.sitio,
+                url: data.url || '',
+                descripcion_general: data.descripcion_general || '',
+                comparativa_versiones: data.comparativa_versiones || undefined,
+                planes: Array.isArray(data.planes) ? data.planes.slice(0, 5) : [],
+                planes_ciclos_resumen: planCyclesSummary,
+                pagos: data.pagos || undefined,
+                requisitos_documentales: Array.isArray(data.requisitos_documentales)
+                    ? data.requisitos_documentales.slice(0, 8)
+                    : undefined,
+                datos_registro_cliente: Array.isArray(data.datos_registro_cliente)
+                    ? data.datos_registro_cliente.slice(0, 8)
+                    : undefined,
+                contacto: includeContact ? (data.contacto || undefined) : undefined,
+                nota: data.nota || data.nota_precios || ''
+            };
+
+            blocks.push(`PRODUCTO: ${item.sitio}\n${JSON.stringify(compact)}`);
+        }
+
+        return [
+            'CONTEXTO DE CONOCIMIENTO ACOTADO (PRIORITARIO):',
+            ...blocks
+        ].join('\n\n');
+    }
+
+    async _buildFallbackKnowledgeSummary() {
+        const catalog = await knowledgeLoader.getCatalogDigest();
+        const lines = [
+            'RESUMEN BASE DE PRODUCTOS DISPONIBLES:'
+        ];
+
+        for (const item of (catalog.items || []).slice(0, 20)) {
+            lines.push(`- ${item.name}${item.summary ? `: ${item.summary}` : ''}`);
+        }
+
+        return lines.join('\n');
+    }
+
+    _escapePromptBraces(text = '') {
+        return String(text || '').replace(/\{/g, '{{').replace(/\}/g, '}}');
+    }
+
+
+    _finalizeReplyQuality(text = '') {
+        let out = String(text || '').trim();
+        if (!out) return out;
+
+        // Elimina fuga de razonamiento interno del modelo.
+        out = out.replace(/\bWait,\s*I\s*need\s*to\s*make\s*sure[\s\S]*$/i, '').trim();
+        out = out.replace(/^\s*Revised\s*$/i, '').trim();
+
+        out = out
+            .replace(/,{2,}/g, ',')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+
+        // Normaliza negrita al formato de WhatsApp: *texto* (evita **texto** estilo Markdown).
+        out = out
+            .replace(/\*\*([^*\n]+)\*\*/g, '*$1*')
+            .replace(/\*\*([^*\n]+)\*/g, '*$1*')
+            .replace(/\*([^*\n]+)\*\*/g, '*$1*');
+
+        // Evita mensajes inventados sobre fallos internos o duplicados si no hubo evidencia real.
+        const hallucinatedOpsPatterns = [
+            /hubo un error/i,
+            /hubo una confusi[oó]n/i,
+            /parece que hubo una confusi[oó]n/i,
+            /se repiti[oó] el mensaje/i,
+            /ya estamos de vuelta/i,
+            /disculpa[^\n]{0,80}error/i,
+            /mensaje anterior/i,
+            /uso los saltos de l[ií]nea/i,
+            /m[aá]s f[aá]ciles de leer en el celular/i,
+            /evito bloques de texto/i
+        ];
+        const rawLines = out
+            .split(/\r?\n/)
+            .map((line) => line.trimEnd());
+        const filtered = rawLines.filter((line) => {
+            const compact = line.trim();
+            if (!compact) return true;
+            return !hallucinatedOpsPatterns.some((rx) => rx.test(compact));
+        });
+        if (filtered.length > 0) {
+            out = filtered.join('\n');
+
+            // Elimina lineas separadoras artificiales (ej: "__", "---", "***").
+            out = out
+                .split(/\r?\n/)
+                .filter((line) => !/^\s*[_\-*=~]{2,}\s*$/.test(line))
+                .join('\n');
+
+            // Compacta exceso de espacios manteniendo legibilidad en WhatsApp.
+            out = out
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
+
+        return out;
+    }
+
+    _looksTruncatedReply(text = '') {
+        const out = String(text || '').trim();
+        if (out.length < 90) return false;
+
+        // Si cierra con puntuación fuerte, asumimos mensaje completo.
+        if (/[.!?…)]$/.test(out)) return false;
+        if (/[✅❌😊🙂😉😄😁🙌👍💰⚡📌📄🧾]$/.test(out)) return false;
+
+        // Señales frecuentes de corte: termina en conector/preposición o separador.
+        if (/[,;:]$/.test(out)) return true;
+        if (/(?:\bS\/|\bUS\$|\$)\s*$/i.test(out)) return true;
+        if (/\/$/.test(out)) return true;
+
+        const opens = (out.match(/[\(\[\{]/g) || []).length;
+        const closes = (out.match(/[\)\]\}]/g) || []).length;
+        if (opens > closes) return true;
+
+        const lastLine = out.split(/\r?\n/).filter(Boolean).pop() || out;
+        const lastWords = lastLine.toLowerCase().trim();
+        if (/(\bde\b|\bdel\b|\bla\b|\blas\b|\bel\b|\blos\b|\by\b|\bo\b|\bque\b|\bpara\b|\bcon\b|\bpor\b|\ben\b|\ba\b|\bal\b|\bun\b|\buna\b|\balguna\b|\balgun\b|\balgún\b)$/.test(lastWords)) {
+            return true;
+        }
+
+        // Respuestas largas sin cierre de frase suelen indicar corte por límite de salida.
+        if (out.length > 180 && /[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]$/.test(out)) {
+            return true;
+        }
+
+        // Si la ultima linea es muy corta y sin cierre de idea, probable corte.
+        return lastLine.length <= 28 && !/[.!?…)]$/.test(lastLine);
+    }
+
+    async _continueTruncatedReply(chain, historyMessages, partialReply, timeoutMs) {
+        const continuationPrompt = [
+            'Tu respuesta anterior quedó incompleta.',
+            'Continúa desde el último punto sin repetir lo ya dicho.',
+            'No agregues saludos ni reinicios, solo la continuación.',
+            `Texto previo:\n${String(partialReply || '').slice(-900)}`
+        ].join('\n\n');
+
+        const continuationResponse = await this._generateWithTimeout(
+            chain,
+            {
+                input: continuationPrompt,
+                history: historyMessages
+            },
+            timeoutMs
+        );
+
+        const continuationText = this._finalizeReplyQuality(continuationResponse?.content || '');
+        if (!continuationText) return String(partialReply || '');
+
+        return `${String(partialReply || '').trim()} ${continuationText}`.trim();
+    }
+
+    _normalizeFlowText(text = '') {
+        return String(text || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    _extractProductIdentifiers(product = null) {
+        if (!product) return [];
+
+        const base = [
+            product?.sitio || '',
+            product?.alias || '',
+            product?.data?.url || ''
+        ].join(' ');
+
+        const normalized = this._normalizeFlowText(base)
+            .replace(/[^a-z0-9\s./-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!normalized) return [];
+
+        const tokens = normalized
+            .split(/[\s/.-]+/)
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .filter((t) => t.length >= 3)
+            .filter((t) => /\d/.test(t) || t.length >= 5);
+
+        return Array.from(new Set(tokens));
+    }
+
+    _escapeRegex(text = '') {
+        return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    _selectExplicitCurrentProduct(text = '', matches = []) {
+        const normalizedText = this._normalizeFlowText(text);
+        if (!normalizedText || !Array.isArray(matches) || matches.length === 0) return null;
+
+        const mentions = [];
+        for (const item of matches) {
+            const ids = this._extractProductIdentifiers(item);
+            if (ids.length === 0) continue;
+
+            let bestPos = -1;
+            let isNegated = false;
+
+            for (const id of ids) {
+                const escaped = this._escapeRegex(id);
+                const rx = new RegExp(`\\b${escaped}\\b`, 'i');
+                const pos = normalizedText.search(rx);
+                if (pos === -1) continue;
+
+                if (bestPos === -1 || pos < bestPos) {
+                    bestPos = pos;
+                }
+
+                const negRx = new RegExp(`\\bno\\s+${escaped}\\b`, 'i');
+                if (negRx.test(normalizedText)) {
+                    isNegated = true;
+                }
+            }
+
+            if (bestPos >= 0) {
+                mentions.push({ item, pos: bestPos, negated: isNegated });
+            }
+        }
+
+        if (mentions.length === 0) return null;
+
+        const positiveMentions = mentions.filter((m) => !m.negated);
+        if (positiveMentions.length > 0) {
+            positiveMentions.sort((a, b) => a.pos - b.pos);
+            return positiveMentions[0].item;
+        }
+
+        return null;
+    }
+
+    _hasExplicitProductMention(text = '', product = null) {
+        const normalizedText = this._normalizeFlowText(text);
+        if (!normalizedText || !product) return false;
+
+        const sitio = this._normalizeFlowText(product?.sitio || '');
+        const alias = this._normalizeFlowText(product?.alias || '');
+        if (sitio && normalizedText.includes(sitio)) return true;
+        if (alias && normalizedText.includes(alias)) return true;
+
+        const identifiers = this._extractProductIdentifiers(product);
+        if (identifiers.some((id) => new RegExp(`\\b${id}\\b`, 'i').test(normalizedText))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    async _inferCommercialFlowState(userMessage = '', chatHistory = null, activeProduct = '') {
+        const current = this._normalizeFlowText(userMessage);
+        const productName = String(activeProduct || '').trim();
+
+        let historyText = '';
+        try {
+            if (chatHistory && typeof chatHistory.getMessages === 'function') {
+                const history = await chatHistory.getMessages();
+                const recent = Array.isArray(history) ? history.slice(-12) : [];
+                historyText = recent
+                    .map((m) => this._normalizeFlowText(m?.content || ''))
+                    .filter(Boolean)
+                    .join(' \n ');
+            }
+        } catch (_) {
+            historyText = '';
+        }
+
+        const userWantsToStop = /(no gracias|gracias|eso seria todo|eso es todo|no deseo|no quiero continuar|luego te escribo)/.test(current);
+        const asksForPlans = /(plan|planes|mensual|trimestral|semestral|semi anual|semanal|anual|precio|precios|costo|cuanto)/.test(current);
+        const selectsPlan = /(me quedo|quiero el plan|elijo|escogo|escojo|tomo el|vamos con|ese plan|opcion\s*[0-9]|plan\s+(mensual|trimestral|semestral|anual|pro|essential|priority))/i.test(current);
+        const asksHowToPay = /(como pago|donde pago|formas de pago|medio de pago|metodo de pago|cuenta|transferencia|deposito|yape|plin|bancolombia|pse|pagar)/.test(current);
+        const reportsPaidOrVoucher = /(ya pague|ya pagué|realice el pago|realic[eé] el pago|adjunto comprobante|te envio comprobante|te envío comprobante|voucher|comprobante|captura|foto del pago)/.test(current);
+
+        const aiAskedPlanRecently = /(que plan prefieres|cual plan prefieres|que ciclo prefieres|cual ciclo prefieres|que opcion te interesa)/.test(historyText);
+        const aiAskedPaymentRecently = /(como prefieres pagar|como deseas pagar|metodo de pago|medio de pago|te comparto los datos de pago|datos de pago)/.test(historyText);
+        const aiAskedVoucherRecently = /(envia|env[ií]a|comparte).*?(comprobante|voucher|captura|constancia)/.test(historyText);
+
+        let stage = 'DISCOVERY';
+        let nextAction = 'ASK_PRODUCT';
+
+        if (userWantsToStop) {
+            stage = 'CLOSING';
+            nextAction = 'CLOSE_RESPECTFULLY';
+        } else if (reportsPaidOrVoucher || aiAskedVoucherRecently) {
+            stage = 'PAYMENT_PROOF';
+            nextAction = 'REQUEST_PROOF_CHANNEL';
+        } else if (asksHowToPay || aiAskedPaymentRecently) {
+            stage = 'PAYMENT_METHOD';
+            nextAction = 'PROVIDE_PAYMENT_OPTIONS';
+        } else if (selectsPlan || aiAskedPlanRecently) {
+            stage = 'PLAN_SELECTION';
+            nextAction = 'CONFIRM_PLAN_AND_ADVANCE_TO_PAYMENT';
+        } else if (productName || asksForPlans) {
+            stage = 'PRODUCT_INTEREST';
+            nextAction = 'SHOW_PLANS_AND_ASK_CHOICE';
+        }
+
+        return {
+            stage,
+            nextAction,
+            activeProduct: productName || 'NINGUNO',
+            hasHistory: Boolean(historyText),
+            signals: {
+                asksForPlans,
+                selectsPlan,
+                asksHowToPay,
+                reportsPaidOrVoucher,
+                userWantsToStop
+            }
+        };
+    }
+
+    _getAttemptWindow(attemptIndex = 0) {
+        return attemptIndex === 0 ? this.initialHistoryWindow : this.retryHistoryWindow;
+    }
+
+    _recordCutoff(reason, details = {}) {
+        this.lastCutoff = {
+            timestamp: Date.now(),
+            reason,
+            details
+        };
+    }
+
+    _extractErrorText(error) {
+        const parts = [
+            error?.message,
+            error?.response?.data?.error?.message,
+            error?.cause?.message,
+            error?.details
+        ];
+
+        const text = parts
+            .filter(Boolean)
+            .map(v => String(v).trim())
+            .join(' | ');
+
+        return text || 'Error desconocido';
+    }
+
+    _classifyError(error) {
+        const technicalMessage = this._extractErrorText(error);
+        const txt = technicalMessage.toLowerCase();
+
+        if (/api key not valid|invalid api key|unauthorized|forbidden|permission denied|authentication|401|403/.test(txt)) {
+            return {
+                code: 'TOKEN_INVALID_OR_NO_PERMISSION',
+                probableCause: 'Token invalido, sin permisos o app/proyecto sin acceso al recurso.',
+                technicalMessage
+            };
+        }
+
+        if (/quota|insufficient quota|resource exhausted|billing|limit reached|exceeded your current quota/.test(txt)) {
+            return {
+                code: 'QUOTA_EXHAUSTED',
+                probableCause: 'Se agoto la cuota del proyecto/API key.',
+                technicalMessage
+            };
+        }
+
+        if (/rate limit|too many requests|429/.test(txt)) {
+            return {
+                code: 'RATE_LIMITED',
+                probableCause: 'Demasiadas solicitudes en poco tiempo (rate limit).',
+                technicalMessage
+            };
+        }
+
+        if (/token limit|context length|prompt too long|input too long|request too large|maximum context|too many tokens/.test(txt)) {
+            return {
+                code: 'CONTEXT_TOO_LARGE',
+                probableCause: 'El contexto/prompt enviado fue demasiado grande.',
+                technicalMessage
+            };
+        }
+
+        if (/safety|blocked|policy|harmful|prohibited/.test(txt)) {
+            return {
+                code: 'SAFETY_BLOCKED',
+                probableCause: 'La respuesta o solicitud fue bloqueada por politicas de seguridad.',
+                technicalMessage
+            };
+        }
+
+        if (/timeout|deadline exceeded|timed out/.test(txt)) {
+            return {
+                code: 'TIMEOUT',
+                probableCause: 'El modelo no respondio dentro del tiempo limite.',
+                technicalMessage
+            };
+        }
+
+        if (/unavailable|overloaded|internal error|503|500/.test(txt)) {
+            return {
+                code: 'MODEL_TEMPORARILY_UNAVAILABLE',
+                probableCause: 'Servicio del modelo temporalmente no disponible o saturado.',
+                technicalMessage
+            };
+        }
+
+        return {
+            code: 'UNKNOWN_RUNTIME_ERROR',
+            probableCause: 'Fallo no clasificado; revisar detalle tecnico y logs.',
+            technicalMessage
+        };
+    }
+
+    _summarizeAttemptFailures(attemptFailures = []) {
+        if (!Array.isArray(attemptFailures) || attemptFailures.length === 0) {
+            return {
+                rootErrorCode: 'NO_ATTEMPT_ERRORS',
+                rootProbableCause: 'No se registraron errores de intento para este corte.'
+            };
+        }
+
+        const counts = {};
+        for (const item of attemptFailures) {
+            const code = item?.errorCode || 'UNKNOWN_RUNTIME_ERROR';
+            counts[code] = (counts[code] || 0) + 1;
+        }
+
+        let rootErrorCode = null;
+        let maxCount = -1;
+        for (const [code, count] of Object.entries(counts)) {
+            if (count > maxCount) {
+                rootErrorCode = code;
+                maxCount = count;
+            }
+        }
+
+        const root = attemptFailures.find(item => item.errorCode === rootErrorCode);
+        return {
+            rootErrorCode,
+            rootProbableCause: root?.probableCause || 'No disponible'
+        };
+    }
+
+    _withFailureDiagnostics(baseDetails = {}, attemptFailures = []) {
+        const recentAttemptErrors = Array.isArray(attemptFailures)
+            ? attemptFailures.slice(-4)
+            : [];
+        const summary = this._summarizeAttemptFailures(recentAttemptErrors);
+
+        return {
+            ...baseDetails,
+            ...summary,
+            recentAttemptErrors
+        };
+    }
+
+    _buildWindowedHistory(chatHistory, maxMessages) {
+        if (!chatHistory || typeof chatHistory.getMessages !== 'function' || typeof chatHistory.addMessage !== 'function') {
+            return chatHistory;
+        }
+
+        const maxChars = this.maxMessageCharsInHistory;
+        return {
+            getMessages: async () => {
+                const messages = await chatHistory.getMessages();
+                if (!Array.isArray(messages)) return [];
+                const windowed = messages.slice(Math.max(0, messages.length - maxMessages));
+                return windowed.map((msg) => {
+                    if (!msg || typeof msg.content !== 'string' || msg.content.length <= maxChars) {
+                        return msg;
+                    }
+
+                    const cloned = Object.assign(
+                        Object.create(Object.getPrototypeOf(msg)),
+                        msg
+                    );
+                    cloned.content = `${msg.content.slice(0, maxChars)}\n[Mensaje recortado por rendimiento]`;
+                    return cloned;
+                });
+            },
+            addMessage: async (msg) => chatHistory.addMessage(msg),
+            clear: async () => Promise.resolve()
+        };
+    }
+
+    async _resolveKnowledgeContextQuery(userMessage, chatHistory) {
+        const current = String(userMessage || '').trim();
+        const currentMatches = await knowledgeLoader.findProductsByQuery(current, 3);
+        const intentNeedsProductLock = /\b(plan|planes|mes|meses|mensual|trimestral|semestral|semi[-\s]?anual|anual|precio|costo|cu[aá]nto|priority|essential|pro\d+)\b/i.test(current);
+        const explicitCurrentProduct = this._selectExplicitCurrentProduct(current, currentMatches)
+            || currentMatches.find((item) => this._hasExplicitProductMention(current, item));
+        const buildResult = ({ query, inferredFromHistory, activeProduct, resolutionMode, trace = {} }) => ({
+            query,
+            inferredFromHistory,
+            activeProduct,
+            resolutionMode,
+            trace: {
+                messageChars: current.length,
+                intentNeedsProductLock,
+                explicitCurrentProduct: explicitCurrentProduct?.sitio || null,
+                ...trace
+            }
+        });
+
+        // Solo fijar por mensaje actual si el usuario nombra explícitamente el producto.
+        if (explicitCurrentProduct) {
+            return buildResult({
+                query: current,
+                inferredFromHistory: false,
+                activeProduct: explicitCurrentProduct?.sitio || null,
+                resolutionMode: 'EXPLICIT_CURRENT_MESSAGE'
+            });
+        }
+
+        // Follow-up corto/ambiguo: usar contexto reciente del chat para mantener el producto activo.
+        const isShortFollowUp = current.length <= 24 || /^(fuente|precio|planes?|detalles?|info|mas info|m[aá]s info|link)\??$/i.test(current);
+        const shouldInferFromHistory = isShortFollowUp || intentNeedsProductLock;
+        if (!shouldInferFromHistory || !chatHistory || typeof chatHistory.getMessages !== 'function') {
+            return buildResult({
+                query: current,
+                inferredFromHistory: false,
+                activeProduct: null,
+                resolutionMode: 'NO_HISTORY_INFERENCE',
+                trace: {
+                    isShortFollowUp,
+                    shouldInferFromHistory
+                }
+            });
+        }
+
+        try {
+            const history = await chatHistory.getMessages();
+            const recent = Array.isArray(history) ? history.slice(-8) : [];
+            const recentHumans = recent.filter((m) => {
+                const t = String(
+                    m?.type ||
+                    (typeof m?._getType === 'function' ? m._getType() : '') ||
+                    (typeof m?.getType === 'function' ? m.getType() : '')
+                ).toLowerCase();
+                return t === 'human' || t === 'user';
+            });
+
+            // En follow-up ambiguo, heredar del ultimo producto mencionado por el usuario.
+            for (let i = recentHumans.length - 1; i >= 0; i--) {
+                const msgText = String(recentHumans[i]?.content || '').trim();
+                if (!msgText) continue;
+                const matches = await knowledgeLoader.findProductsByQuery(msgText, 3);
+                const explicit = matches.find((item) => this._hasExplicitProductMention(msgText, item));
+                if (explicit?.sitio) {
+                    const inferredQuery = `${explicit.sitio} ${current}`.trim();
+                    return buildResult({
+                        query: inferredQuery,
+                        inferredFromHistory: true,
+                        activeProduct: explicit.sitio,
+                        resolutionMode: 'INHERITED_FROM_HUMAN_HISTORY',
+                        trace: {
+                            isShortFollowUp,
+                            shouldInferFromHistory,
+                            scannedHumanMessages: recentHumans.length,
+                            inheritedFromMessageIndex: i
+                        }
+                    });
+                }
+            }
+
+        } catch (_) {
+            // Silencioso: si no se puede leer historial, seguimos con query actual.
+        }
+
+        return buildResult({
+            query: current,
+            inferredFromHistory: false,
+            activeProduct: null,
+            resolutionMode: 'NO_EXPLICIT_PRODUCT'
+        });
+    }
+
+    _estimateMessageChars(messages = []) {
+        if (!Array.isArray(messages)) return 0;
+        return messages.reduce((acc, msg) => {
+            if (msg && typeof msg.content === 'string') {
+                return acc + msg.content.length;
+            }
+            return acc;
+        }, 0);
+    }
+
+    async _appendFallbackToHistory(chatHistory, userMessage, fallbackText) {
+        if (!chatHistory || typeof chatHistory.getMessages !== 'function' || typeof chatHistory.addMessage !== 'function') {
+            return;
+        }
+
+        try {
+            const messages = await chatHistory.getMessages();
+            const list = Array.isArray(messages) ? messages : [];
+            const last = list[list.length - 1];
+            const lastContent = String(last?.content || '');
+
+            if (lastContent !== String(userMessage || '')) {
+                await chatHistory.addMessage(new HumanMessage(String(userMessage || '')));
+            }
+
+            await chatHistory.addMessage(new AIMessage(String(fallbackText || '')));
+        } catch (error) {
+            logger.warn(`[GEMINI] No se pudo persistir fallback en historial: ${error.message}`);
+        }
+    }
+
+    _modelContentToText(content) {
+        if (typeof content === 'string') return content;
+        if (Array.isArray(content)) {
+            return content
+                .map((part) => {
+                    if (typeof part === 'string') return part;
+                    if (part && typeof part.text === 'string') return part.text;
+                    return '';
+                })
+                .filter(Boolean)
+                .join('\n');
+        }
+        return String(content || '');
+    }
+
+    _extractFirstJsonObject(text = '') {
+        const raw = String(text || '').trim();
+        const fenced = raw.match(/```json\s*([\s\S]*?)```/i);
+        const candidate = fenced?.[1] || raw;
+        const start = candidate.indexOf('{');
+        const end = candidate.lastIndexOf('}');
+        if (start === -1 || end === -1 || end <= start) return null;
+
+        const maybeJson = candidate.slice(start, end + 1);
+        try {
+            return JSON.parse(maybeJson);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    _parseDateCandidate(raw = '') {
+        const txt = String(raw || '').trim();
+        if (!txt) return null;
+
+        const isoMatch = txt.match(/\b(20\d{2})[-\/](0?[1-9]|1[0-2])[-\/](0?[1-9]|[12]\d|3[01])\b/);
+        if (isoMatch) {
+            const y = Number(isoMatch[1]);
+            const m = Number(isoMatch[2]);
+            const d = Number(isoMatch[3]);
+            return new Date(Date.UTC(y, m - 1, d));
+        }
+
+        const latamMatch = txt.match(/\b(0?[1-9]|[12]\d|3[01])[-\/](0?[1-9]|1[0-2])[-\/](20\d{2})\b/);
+        if (latamMatch) {
+            const d = Number(latamMatch[1]);
+            const m = Number(latamMatch[2]);
+            const y = Number(latamMatch[3]);
+            return new Date(Date.UTC(y, m - 1, d));
+        }
+
+        return null;
+    }
+
+    _computeDateRecency(dateCandidate, todayIso, maxAgeDays) {
+        const parsed = this._parseDateCandidate(dateCandidate);
+        if (!parsed || Number.isNaN(parsed.getTime())) {
+            return {
+                isRecent: false,
+                daysOld: null,
+                reason: 'No se detecto una fecha valida en el comprobante.'
+            };
+        }
+
+        const ref = this._parseDateCandidate(todayIso) || new Date();
+        const diffMs = ref.getTime() - parsed.getTime();
+        const daysOld = Math.floor(diffMs / 86400000);
+
+        if (daysOld < 0) {
+            return {
+                isRecent: false,
+                daysOld,
+                reason: 'La fecha del comprobante parece futura.'
+            };
+        }
+
+        if (daysOld > maxAgeDays) {
+            return {
+                isRecent: false,
+                daysOld,
+                reason: `La fecha excede la antiguedad maxima permitida (${maxAgeDays} dias).`
+            };
+        }
+
+        return {
+            isRecent: true,
+            daysOld,
+            reason: `Fecha dentro del rango permitido (${daysOld} dias).`
+        };
+    }
+
+    _applyDeterministicPaymentValidation(parsed = {}, options = {}) {
+        const todayIso = String(options.todayIso || new Date().toISOString().slice(0, 10));
+        const maxAgeDays = Math.max(Number(options.maxAgeDays || 2), 1);
+
+        const dateIso = String(parsed.date_iso || '').trim();
+        const dateText = String(parsed.date_text || '').trim();
+        const amountText = String(parsed.amount_text || '').trim();
+        const operationNumber = String(parsed.operation_number || '').trim();
+        const statusText = this._normalizeFlowText(parsed.payment_status || parsed.status_text || '');
+        const matchedDestination = Boolean(parsed.matched_destination);
+
+        const dateRecency = this._computeDateRecency(dateIso || dateText, todayIso, maxAgeDays);
+        const amountDetected = /\d/.test(amountText);
+        const operationDetected = /[a-z0-9]{4,}/i.test(operationNumber.replace(/\s+/g, ''));
+        const statusApproved = /(aprobad|exitos|completad|ok|success)/.test(statusText);
+
+        const checks = [
+            {
+                name: 'fecha_reciente',
+                passed: dateRecency.isRecent,
+                reason: dateRecency.reason
+            },
+            {
+                name: 'monto_detectado',
+                passed: amountDetected,
+                reason: amountDetected ? 'Se detecto monto en la imagen.' : 'No se detecto monto confiable.'
+            },
+            {
+                name: 'operacion_detectada',
+                passed: operationDetected,
+                reason: operationDetected ? 'Se detecto numero/codigo de operacion.' : 'Falta numero de operacion legible.'
+            },
+            {
+                name: 'destino_coincidente',
+                passed: matchedDestination,
+                reason: matchedDestination
+                    ? 'El destino coincide con cuentas/medios permitidos.'
+                    : 'El destino no coincide con datos de pago permitidos.'
+            },
+            {
+                name: 'estado_pago',
+                passed: statusApproved,
+                reason: statusApproved
+                    ? 'El comprobante muestra estado exitoso/aprobado.'
+                    : 'No se pudo confirmar estado de pago aprobado.'
+            }
+        ];
+
+        const failed = checks.filter((c) => !c.passed);
+        const passed = checks.length - failed.length;
+        const confidence = Number((passed / checks.length).toFixed(2));
+        const hardFail = !dateRecency.isRecent || !matchedDestination || !amountDetected || !operationDetected;
+        const status = !hardFail && statusApproved ? 'VALIDADO' : 'NO VALIDADO';
+
+        const reasons = failed.map((c) => c.reason);
+        const summary = status === 'VALIDADO'
+            ? 'Comprobante consistente con las validaciones requeridas.'
+            : 'Comprobante con observaciones; requiere correccion o revision manual.';
+
+        return {
+            ...parsed,
+            status,
+            confidence,
+            checks,
+            reasons,
+            summary,
+            is_recent_date: dateRecency.isRecent,
+            days_old: dateRecency.daysOld
+        };
+    }
+
+    _formatPaymentValidationReply(result = {}) {
+        const status = String(result?.status || '').toUpperCase() === 'VALIDADO' ? 'VALIDADO' : 'NO VALIDADO';
+        const icon = status === 'VALIDADO' ? '✅' : '❌';
+        const confidence = Number(result?.confidence);
+        const confidenceText = Number.isFinite(confidence)
+            ? `${Math.max(0, Math.min(100, Math.round(confidence * 100)))}%`
+            : 'No disponible';
+
+        const reasons = Array.isArray(result?.reasons)
+            ? result.reasons.filter(Boolean).slice(0, 4)
+            : [];
+        const checks = Array.isArray(result?.checks)
+            ? result.checks.slice(0, 5)
+            : [];
+
+        const lines = [`${status} ${icon}`];
+        lines.push(`Confianza: ${confidenceText}`);
+
+        if (result?.date_text) lines.push(`Fecha detectada: ${result.date_text}`);
+        if (result?.amount_text) lines.push(`Monto detectado: ${result.amount_text}`);
+        if (result?.operation_number) lines.push(`Operacion: ${result.operation_number}`);
+        lines.push(`Coincidencia de destino: ${result?.matched_destination ? 'SI' : 'NO'}`);
+
+        if (reasons.length) {
+            lines.push('Motivos:');
+            for (const reason of reasons) {
+                lines.push(`- ${reason}`);
+            }
+        }
+
+        if (checks.length) {
+            lines.push('Validaciones:');
+            for (const check of checks) {
+                const label = check?.name ? String(check.name) : 'check';
+                const mark = check?.passed ? 'OK' : 'FALLA';
+                const detail = check?.reason ? ` - ${check.reason}` : '';
+                lines.push(`- ${label}: ${mark}${detail}`);
+            }
+        }
+
+        if (result?.summary) {
+            lines.push(`Resumen: ${String(result.summary).trim()}`);
+        }
+
+        return lines.join('\n');
+    }
+
+    async validatePaymentProof(imageInput = {}, options = {}) {
+        const imageBase64 = String(imageInput?.base64 || '').trim();
+        const mimeType = String(imageInput?.mimeType || 'image/jpeg').trim();
+        const caption = String(imageInput?.caption || '').trim();
+        const chatHistory = options?.chatHistory || null;
+
+        if (!imageBase64) {
+            return 'NO VALIDADO ❌\nMotivo: No se pudo leer la imagen del comprobante.';
+        }
+
+        const fileSizeBytes = Number(imageInput?.fileSizeBytes || 0);
+        if (fileSizeBytes > 8 * 1024 * 1024) {
+            return 'NO VALIDADO ❌\nMotivo: La imagen supera el tamano maximo permitido (8MB).';
+        }
+
+        const keyData = this._getNextAvailableKey();
+        if (!keyData) {
+            return 'NO VALIDADO ❌\nMotivo: No hay capacidad temporal para validar el comprobante.';
+        }
+
+        const runtimeConfig = this._resolveRuntimeConfig(null);
+        const model = this._buildModel(keyData, runtimeConfig);
+        const maxAgeDays = Math.max(Number(config.gemini?.paymentValidationMaxAgeDays || 2), 1);
+        const now = new Date();
+        const todayIso = now.toISOString().slice(0, 10);
+
+        const paymentProfiles = await knowledgeLoader.getPaymentValidationProfiles();
+        const validationContext = JSON.stringify({
+            fecha_hoy: todayIso,
+            max_antiguedad_dias: maxAgeDays,
+            perfiles_pago: paymentProfiles
+        });
+
+        const instruction = [
+            'Eres un validador de comprobantes de pago.',
+            `Fecha actual de referencia: ${todayIso}.`,
+            `La fecha del comprobante debe ser reciente (<= ${maxAgeDays} dias).`,
+            'Analiza la imagen y determina si es un comprobante de pago valido.',
+            'Valida como minimo: legibilidad, fecha, monto, numero de operacion, estado exitoso/aprobado, y coincidencia de destino (cuenta/CCI/Yape/PLIN/NIT/titular) con los perfiles permitidos.',
+            'Si falta evidencia clave o hay duda razonable, marca NO VALIDADO.',
+            `Contexto de pagos permitidos: ${validationContext}`,
+            caption ? `Texto adjunto por usuario: ${caption}` : '',
+            'Responde SOLO JSON estricto con este esquema:',
+            '{"status":"VALIDADO|NO VALIDADO","confidence":0.0,"is_recent_date":true,"date_text":"","date_iso":"","amount_text":"","currency":"PEN|COP|USD|UNKNOWN","operation_number":"","payment_status":"","matched_destination":true,"matched_fields":[],"checks":[{"name":"","passed":true,"reason":""}],"reasons":[],"summary":""}'
+        ].filter(Boolean).join('\n');
+
+        try {
+            const response = await model.invoke([
+                new HumanMessage({
+                    content: [
+                        { type: 'text', text: instruction },
+                        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } }
+                    ]
+                })
+            ]);
+
+            const raw = this._modelContentToText(response?.content);
+            const parsed = this._extractFirstJsonObject(raw);
+            if (!parsed) {
+                logger.warn('[GEMINI] Validacion de comprobante sin JSON parseable.');
+                return 'NO VALIDADO ❌\nMotivo: No se pudo estructurar la validacion del comprobante.';
+            }
+
+            const finalResult = this._applyDeterministicPaymentValidation(parsed, {
+                todayIso,
+                maxAgeDays
+            });
+            const output = this._formatPaymentValidationReply(finalResult);
+
+            if (chatHistory && typeof chatHistory.addMessage === 'function') {
+                const userEvidenceText = caption
+                    ? `[Imagen de comprobante enviada] ${caption}`
+                    : '[Imagen de comprobante enviada]';
+                await chatHistory.addMessage(new HumanMessage(userEvidenceText));
+                await chatHistory.addMessage(new AIMessage(output));
+            }
+
+            return output;
+        } catch (error) {
+            const info = this._classifyError(error);
+            logger.error(`[GEMINI] Error validando comprobante: ${info.code} - ${info.technicalMessage}`);
+            return 'NO VALIDADO ❌\nMotivo: No se pudo completar la validacion automatica de la imagen.';
+        }
     }
 
     /**
      * Genera una respuesta de la IA con circuit breaker y LangChain Memory
      */
-    async generateResponse(userMessage, chatHistory, userName = '') {
+    async generateResponse(userMessage, chatHistory, userName = '', userGeminiConfig = null, userPhone = '') {
         if (this.keys.length === 0) {
-            return "Lo siento, mi cerebro IA no está configurado actualmente (Faltan API Keys).";
+            this._recordCutoff('NO_KEYS_CONFIGURED', {
+                phone: userPhone || null
+            });
+            const fallback = 'Tengo un problema temporal para responder en este momento. Intenta nuevamente en un instante.';
+            await this._appendFallbackToHistory(chatHistory, userMessage, fallback);
+            return fallback;
         }
 
-        const knowledge = knowledgeLoader.load();
-        const userNamePrompt = userName ? `\n\nEl nombre del usuario de WhatsApp con el que estás hablando es "${userName}". Llámalo por su nombre gentilmente.` : '';
+        const runtimeConfig = this._resolveRuntimeConfig(userGeminiConfig);
 
-        // Construir el prompt de LangChain
-        const prompt = ChatPromptTemplate.fromMessages([
-            ["system", knowledge + userNamePrompt + "\n\n¡Entendido! Actuaré como Asistente, el asesor virtual experto de Digital Buho. Usaré toda la base de conocimiento proporcionada para responder preguntas."],
-            new MessagesPlaceholder("history"),
-            ["human", "{input}"]
-        ]);
-
+        const userNamePrompt = userName
+            ? `\n\nNombre del usuario: "${userName}". Puedes mencionarlo de forma ocasional y natural, sin repetirlo en cada mensaje.`
+            : '';
         let attempts = 0;
-        const maxAttempts = this.keys.length;
+        const maxAttempts = Math.max(1, Math.min(this.keys.length, this.maxAttemptsPerMessage));
+        const requestStart = Date.now();
+        const attemptFailures = [];
+        const initialMessages = (chatHistory && typeof chatHistory.getMessages === 'function')
+            ? await chatHistory.getMessages()
+            : [];
+        const isFirstTurn = !Array.isArray(initialMessages) || initialMessages.length === 0;
+        const requestTimeoutBudgetMs = isFirstTurn
+            ? Math.max(this.totalTimeoutMs, 32000)
+            : this.totalTimeoutMs;
+        const requestDebug = {
+            requestId: `greq_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+            startedAt: requestStart,
+            finishedAt: null,
+            status: 'IN_PROGRESS',
+            phone: userPhone || null,
+            userMessageChars: String(userMessage || '').length,
+            runtime: {
+                timeoutMs: runtimeConfig.timeout,
+                totalTimeoutMs: requestTimeoutBudgetMs,
+                isFirstTurn,
+                maxAttempts,
+                generation: {
+                    temperature: runtimeConfig.generation.temperature,
+                    maxOutputTokens: runtimeConfig.generation.maxOutputTokens,
+                    topP: runtimeConfig.generation.topP
+                }
+            },
+            attempts: [],
+            final: null
+        };
+        this.lastRequestDebug = requestDebug;
 
         while (attempts < maxAttempts) {
+            const elapsed = Date.now() - requestStart;
+            const remainingBudgetMs = requestTimeoutBudgetMs - elapsed;
+            if (remainingBudgetMs <= 1000) {
+                logger.warn('[GEMINI] Presupuesto total de tiempo agotado para este mensaje.');
+                this._recordCutoff('TOTAL_BUDGET_EXHAUSTED', this._withFailureDiagnostics({
+                    attempts,
+                    maxAttempts,
+                    remainingBudgetMs,
+                    phone: userPhone || null
+                }, attemptFailures));
+                requestDebug.status = 'FAILED';
+                requestDebug.finishedAt = Date.now();
+                requestDebug.final = {
+                    reason: 'TOTAL_BUDGET_EXHAUSTED',
+                    remainingBudgetMs,
+                    attempts,
+                    maxAttempts
+                };
+                break;
+            }
+
+            const isRetry = attempts > 0;
+            const contextQueryResult = await this._resolveKnowledgeContextQuery(userMessage, chatHistory);
+            const activeProduct = String(contextQueryResult.activeProduct || '').trim();
+            const knowledgeQuery = activeProduct || contextQueryResult.query;
+            const hasProductMatch = (await knowledgeLoader.findProductsByQuery(knowledgeQuery, 1)).length > 0;
+            const commercialFlow = await this._inferCommercialFlowState(userMessage, chatHistory, activeProduct);
+
+            const historyWindow = this._getAttemptWindow(attempts);
+            const scopedProducts = activeProduct ? 1 : (isRetry ? 1 : 3);
+            const scopedHistory = this._buildWindowedHistory(chatHistory, historyWindow);
+            const scopedHistoryMessages = await scopedHistory.getMessages();
+            const scopedHistoryCount = scopedHistoryMessages.length;
+            const scopedHistoryChars = this._estimateMessageChars(scopedHistoryMessages);
+
+            let knowledge = await this._buildScopedKnowledge(knowledgeQuery, scopedProducts, {
+                includeContact: !hasProductMatch
+            });
+            if (!knowledge) {
+                knowledge = await this._buildFallbackKnowledgeSummary();
+            }
+            if (!knowledge) {
+                knowledge = await knowledgeLoader.load();
+            }
+
+            const maxCharsThisAttempt = this.maxKnowledgePromptChars > 0
+                ? (isRetry ? Math.min(this.maxKnowledgePromptChars, this.retryKnowledgePromptChars) : this.maxKnowledgePromptChars)
+                : (isRetry ? this.retryKnowledgePromptChars : this.initialKnowledgePromptChars);
+
+            if (maxCharsThisAttempt > 0 && knowledge.length > maxCharsThisAttempt) {
+                knowledge = `${knowledge.slice(0, maxCharsThisAttempt)}\n\n[Contexto resumido automáticamente por rendimiento.]`;
+                if (!this._warnedKnowledgeTruncation) {
+                    logger.warn(`[GEMINI] Prompt de conocimiento recortado para rendimiento: ${maxCharsThisAttempt} caracteres.`);
+                    this._warnedKnowledgeTruncation = true;
+                }
+            }
+
+            const behaviorPrompt = [
+                "Responde como asesor humano por WhatsApp, con lenguaje natural y sin plantillas fijas.",
+                "No impongas reglas fijas de formato ni saltos de linea por plantilla; escribe de forma natural y conversacional.",
+                "Haz que el mensaje se vea bonito y facil de leer en WhatsApp: usa buena separacion entre ideas y bloques.",
+                "Cuando necesites listar opciones, evita usar '*' como vineta de lista; prefiere '•', '▸', guion '-' o numeracion natural.",
+                "Deja uno o dos saltos de linea cuando ayuden a separar secciones (planes, precios, requisitos), sin volverlo mecanico.",
+                "Prioriza legibilidad y estetica: que no se vea amontonado, pero decide el formato segun el contexto.",
+                "Mantente enfocado en la pregunta actual y responde primero lo esencial, luego detalle opcional.",
+                "Usa emojis de forma natural y expresiva (2 a 4 por mensaje cuando aporte valor), priorizando caritas y enfasis puntual por idea clave.",
+                "Caritas sugeridas: 😊 🙂 😉 😄 😁 🙌 👍.",
+                "Para resaltar puntos usa de forma puntual: 💰 (precio), ✅ (incluye/beneficio), ⚡ (rapidez), 📌 (dato importante), 📄 (requisitos), 🧾 (comprobante).",
+                "Evita saturar una misma linea con varios emojis.",
+                "Si usas negrita en WhatsApp, usa SOLO un asterisco por lado: *texto*. No uses **texto**.",
+                "Evita usar separadores artificiales como '__', '---' o lineas decorativas; escribe de forma limpia y natural.",
+                "NUNCA digas que hubo error interno, que el mensaje se repitio, que hubo caida, reinicio o que ya estan de vuelta, a menos que el sistema lo indique explicitamente.",
+                "Si no hay evidencia, no lo menciones.",
+                "SI detectas que el usuario pregunta por un producto que existe en el conocimiento, entrega informacion util y accionable (descripcion breve + planes/precios si existen + requisitos/pago/canal de avance).",
+                "MODO VENTA OBLIGATORIO: si PRODUCT_MATCH_DETECTED=SI, asesora la venta en este mismo chat de punta a punta (detectar necesidad, recomendar plan, confirmar ciclo/precio, solicitar datos, indicar pago, pedir comprobante y confirmar activacion).",
+                "PROHIBIDO EN MODO_VENTA=SI: no enviar al usuario a otro canal, no pedir que escriba al numero, no compartir enlaces wa.me/api.whatsapp.com/chat.whatsapp.com y no usar frases de derivacion como 'Puedes escribirnos haciendo clic aqui'.",
+                "REGLA DE PRODUCTOS: Pro8 y Mozo son productos separados y se compran por separado. Si el usuario elige Pro8, responde sobre Pro8 (no lo redirijas a Mozo). Si elige Mozo, responde sobre Mozo y aclara que puede requerir Pro8 actualizado.",
+                "Aunque exista telefono/contacto en la base de conocimiento, en MODO_VENTA=SI NO lo uses como CTA de compra. Usa ese dato solo si PRODUCT_MATCH_DETECTED=NO o si el usuario pide explicitamente hablar con humano.",
+                "CIERRE OBLIGATORIO EN MODO_VENTA=SI: termina con un siguiente paso concreto dentro del chat (ej: elegir plan/ciclo, confirmar datos, enviar comprobante).",
+                "Solo deriva a numero o humano cuando PRODUCT_MATCH_DETECTED=NO o cuando falte conocimiento real para responder con certeza.",
+                "Si PRODUCT_MATCH_DETECTED=NO y el usuario hace saludo o consulta general, no asumas producto, pais ni entidad; pide una aclaracion breve sobre que servicio necesita.",
+                "REGLA OBLIGATORIA: si el plan tiene 'ciclos_facturacion', debes mostrar TODOS los ciclos disponibles (ej: mensual, trimestral, semi-anual, anual) con su precio; no omitas ciclos.",
+                "Si no hay planes en data, dilo claramente y ofrece el siguiente paso para cotizar.",
+                "Si la pregunta actual es corta o ambigua (ej: fuente, precio, link, detalles), conserva el producto en contexto del chat reciente en lugar de cambiar de producto.",
+                "Si PRODUCTO_ACTIVO esta definido, responde solo sobre ese producto salvo que el usuario pida explicitamente cambiar de producto/servicio.",
+                "Si el usuario pide un plan/ciclo/precio y PRODUCTO_ACTIVO esta definido, NO cambies a otro producto aunque otro catalogo tenga el mismo nombre de plan.",
+                "Si el producto solicitado es Pro8 y existe informacion en la base (planes/ciclos/precios), PROHIBIDO responder que no tienes informacion de Pro8.",
+                "Si el usuario no quiere continuar, cierra con respeto y sin insistencia comercial.",
+                "ORQUESTACION INTERNA (NO EXPLICARLA): razona internamente usando la pregunta actual + el historial reciente y decide el mejor siguiente paso comercial sin reglas fijas ni guiones rigidos.",
+                "REGLA DE PRECIOS OBLIGATORIA: cuando exista 'precio' y 'precio_original', el monto real a pagar SIEMPRE es 'precio'. 'precio_original' es solo referencial (antes del descuento) y NO debe usarse como total a cobrar.",
+                "REGLAS DURAS: no inventes datos; si hay datos criticos (cuentas, NIT, correos, precios, canal de envio de documentos), respetalos exactamente.",
+                "PRODUCT_MATCH_DETECTED=" + (hasProductMatch ? "SI" : "NO") +
+                    " | MODO_VENTA=" + (hasProductMatch ? "SI" : "NO") +
+                    " | SALES_STAGE=" + (commercialFlow?.stage || "DISCOVERY") +
+                    " | NEXT_ACTION=" + (commercialFlow?.nextAction || "ASK_PRODUCT") +
+                    " | CONTEXT_FROM_HISTORY=" + (contextQueryResult.inferredFromHistory ? "SI" : "NO") +
+                    " | PRODUCTO_ACTIVO=" + (activeProduct || "NINGUNO")
+            ].join(' ');
+
+            const systemText = this._escapePromptBraces(
+                `${knowledge}${userNamePrompt}\n\n${behaviorPrompt}`
+            );
+
+            const prompt = ChatPromptTemplate.fromMessages([
+                ["system", systemText],
+                new MessagesPlaceholder("history"),
+                ["human", "{input}"]
+            ]);
+
             const keyData = this._getNextAvailableKey();
             
             if (!keyData) {
                 logger.warn('[GEMINI] Todas las keys están desactivadas por el Circuit Breaker.');
-                return "Estoy experimentando problemas técnicos temporales (Circuit Breaker). Por favor intenta en un par de minutos.";
+                this._recordCutoff('NO_AVAILABLE_KEYS', this._withFailureDiagnostics({
+                    attempts,
+                    maxAttempts,
+                    phone: userPhone || null
+                }, attemptFailures));
+                requestDebug.status = 'FAILED';
+                requestDebug.finishedAt = Date.now();
+                requestDebug.final = {
+                    reason: 'NO_AVAILABLE_KEYS',
+                    attempts,
+                    maxAttempts
+                };
+                const fallback = 'Estoy con alta demanda y no pude responder bien en este intento. ¿Lo intentamos de nuevo?';
+                await this._appendFallbackToHistory(chatHistory, userMessage, fallback);
+                return fallback;
             }
+
+            const configuredTimeout = Math.max(runtimeConfig.timeout || 0, 20000);
+            const firstTurnBoostMs = (isFirstTurn && !isRetry) ? 5000 : 0;
+            const retryTimeoutCeiling = isRetry
+                ? Math.min(Math.max(configuredTimeout + 6000, 24000), 32000)
+                : Math.min(Math.max(configuredTimeout + firstTurnBoostMs, 20000), 26000);
+            const attemptTimeout = Math.max(6000, Math.min(retryTimeoutCeiling, Math.max(5000, remainingBudgetMs - 800)));
+            const attemptIndex = attempts + 1;
+            const attemptDebug = {
+                attempt: attemptIndex,
+                isRetry,
+                keyIndex: keyData.index + 1,
+                keyLabel: keyData.label,
+                timeoutMs: attemptTimeout,
+                remainingBudgetMs,
+                scopedProducts,
+                historyWindow,
+                historyMessages: scopedHistoryCount,
+                historyChars: scopedHistoryChars,
+                knowledgeChars: knowledge.length,
+                systemPromptChars: systemText.length,
+                context: {
+                    resolutionMode: contextQueryResult?.resolutionMode || 'UNKNOWN',
+                    inferredFromHistory: Boolean(contextQueryResult?.inferredFromHistory),
+                    activeProduct: activeProduct || null,
+                    knowledgeQuery,
+                    trace: contextQueryResult?.trace || {}
+                },
+                startedAt: Date.now(),
+                finishedAt: null,
+                status: 'IN_PROGRESS',
+                errorCode: null,
+                errorMessage: null
+            };
+            requestDebug.attempts.push(attemptDebug);
 
             try {
                 const startTime = Date.now();
                 keyData.totalCalls++;
+                keyData.lastUsedAt = Date.now();
                 metrics.increment('geminiCalls');
                 logger.debug(`[GEMINI] Procesando con key #${keyData.index + 1}/${this.keys.length}`);
 
                 // Crear cadena con el modelo de esta iteración
-                const chain = prompt.pipe(keyData.model);
-                
-                // Envolver con memoria
-                const withHistory = new RunnableWithMessageHistory({
-                    runnable: chain,
-                    getMessageHistory: () => chatHistory,
-                    inputMessagesKey: "input",
-                    historyMessagesKey: "history",
-                });
+                const attemptRuntimeConfig = {
+                    ...runtimeConfig,
+                    generation: {
+                        ...runtimeConfig.generation,
+                        maxOutputTokens: isRetry
+                            ? Math.max(700, Math.min(runtimeConfig.generation.maxOutputTokens, 1200))
+                            : runtimeConfig.generation.maxOutputTokens
+                    }
+                };
+                const model = this._buildModel(keyData, attemptRuntimeConfig);
+                const chain = prompt.pipe(model);
 
-                // Ejecutar con timeout
-                const response = await this._generateWithTimeout(withHistory, userMessage);
+                // Ejecutar con timeout pasando historial explícito para evitar pérdida de contexto.
+                const response = await this._generateWithTimeout(
+                    chain,
+                    {
+                        input: userMessage,
+                        history: scopedHistoryMessages
+                    },
+                    attemptTimeout
+                );
                 
                 // Éxito: resetear fallos del circuit breaker
                 keyData.failures = 0;
+                keyData.lastError = null;
+                keyData.lastErrorAt = 0;
 
                 const latency = Date.now() - startTime;
                 metrics.recordLatency(latency);
                 logger.info(`[GEMINI] ✓ Respuesta generada con key #${keyData.index + 1} en ${latency}ms`);
 
-                return response.content;
+                attemptDebug.finishedAt = Date.now();
+                attemptDebug.status = 'SUCCESS';
+                attemptDebug.latencyMs = latency;
+
+                const finalReply = this._finalizeReplyQuality(response.content);
+
+                if (this._looksTruncatedReply(finalReply)) {
+                    logger.warn('[GEMINI] Respuesta parcial detectada. Intentando continuación automática...');
+                    const continuationTimeoutMs = Math.max(5000, Math.min(12000, attemptTimeout - 1200));
+                    const recoveredReply = await this._continueTruncatedReply(
+                        chain,
+                        scopedHistoryMessages,
+                        finalReply,
+                        continuationTimeoutMs
+                    );
+
+                    if (this._looksTruncatedReply(recoveredReply)) {
+                        throw new GeminiAPIError('Model output appears truncated/incomplete');
+                    }
+
+                    attemptDebug.recoveredFromTruncation = true;
+                    attemptDebug.finalReplyChars = String(recoveredReply || '').length;
+
+                    // Persistencia explícita de memoria conversacional para el siguiente turno.
+                    if (chatHistory && typeof chatHistory.addMessage === 'function') {
+                        await chatHistory.addMessage(new HumanMessage(String(userMessage || '')));
+                        await chatHistory.addMessage(new AIMessage(String(recoveredReply || '')));
+                    }
+
+                    requestDebug.status = 'SUCCESS';
+                    requestDebug.finishedAt = Date.now();
+                    requestDebug.final = {
+                        reason: 'SUCCESS_RECOVERED_TRUNCATION',
+                        attempt: attemptIndex,
+                        keyIndex: keyData.index + 1,
+                        latencyMs: Date.now() - startTime,
+                        finalReplyChars: String(recoveredReply || '').length
+                    };
+
+                    return recoveredReply;
+                }
+
+                // Persistencia explícita de memoria conversacional para el siguiente turno.
+                if (chatHistory && typeof chatHistory.addMessage === 'function') {
+                    await chatHistory.addMessage(new HumanMessage(String(userMessage || '')));
+                    await chatHistory.addMessage(new AIMessage(String(finalReply || '')));
+                }
+
+                requestDebug.status = 'SUCCESS';
+                requestDebug.finishedAt = Date.now();
+                requestDebug.final = {
+                    reason: 'SUCCESS',
+                    attempt: attemptIndex,
+                    keyIndex: keyData.index + 1,
+                    latencyMs: latency,
+                    finalReplyChars: String(finalReply || '').length
+                };
+
+                return finalReply;
 
             } catch (error) {
-                keyData.totalErrors++;
-                keyData.failures++;
-                metrics.increment('geminiErrors');
+                const errorInfo = this._classifyError(error);
+                const isTimeoutError = errorInfo.code === 'TIMEOUT';
 
-                logger.warn(`[GEMINI] Error con key #${keyData.index + 1} (fallo ${keyData.failures}/${this.circuitBreakerConfig.failureThreshold}): ${error.message}`);
+                keyData.totalErrors++;
+                if (!isTimeoutError) {
+                    keyData.failures++;
+                }
+                keyData.lastError = errorInfo.technicalMessage;
+                keyData.lastErrorAt = Date.now();
+                metrics.increment('geminiErrors');
+                metrics.recordError('gemini', keyData.lastError, {
+                    keyIndex: keyData.index + 1,
+                    keyLabel: keyData.label,
+                    errorCode: errorInfo.code,
+                    probableCause: errorInfo.probableCause,
+                    phone: userPhone || null
+                });
+
+                attemptFailures.push({
+                    attempt: attemptIndex,
+                    keyIndex: keyData.index + 1,
+                    keyLabel: keyData.label,
+                    errorCode: errorInfo.code,
+                    probableCause: errorInfo.probableCause,
+                    technicalMessage: String(errorInfo.technicalMessage || '').slice(0, 320),
+                    attemptTimeoutMs: attemptTimeout,
+                    knowledgeChars: knowledge.length,
+                    historyMessages: scopedHistoryCount,
+                    historyChars: scopedHistoryChars,
+                    userMessageChars: String(userMessage || '').length,
+                    timestamp: Date.now()
+                });
+
+                attemptDebug.finishedAt = Date.now();
+                attemptDebug.status = 'ERROR';
+                attemptDebug.errorCode = errorInfo.code;
+                attemptDebug.errorMessage = String(errorInfo.technicalMessage || '').slice(0, 320);
+
+                logger.warn(`[GEMINI] Error con key #${keyData.index + 1} (fallo ${keyData.failures}/${runtimeConfig.circuitBreaker.failureThreshold}): ${errorInfo.code} - ${errorInfo.technicalMessage}`);
 
                 // Circuit breaker: desactivar key si supera el umbral
-                if (keyData.failures >= this.circuitBreakerConfig.failureThreshold) {
-                    keyData.disabledUntil = Date.now() + this.circuitBreakerConfig.recoveryTimeMs;
-                    logger.warn(`[GEMINI] ⚡ Circuit breaker activado para key #${keyData.index + 1}. Reactivación en ${this.circuitBreakerConfig.recoveryTimeMs / 1000}s`);
+                if (!isTimeoutError && keyData.failures >= runtimeConfig.circuitBreaker.failureThreshold) {
+                    keyData.disabledUntil = Date.now() + runtimeConfig.circuitBreaker.recoveryTimeMs;
+                    logger.warn(`[GEMINI] ⚡ Circuit breaker activado para key #${keyData.index + 1}. Reactivación en ${runtimeConfig.circuitBreaker.recoveryTimeMs / 1000}s`);
                     metrics.increment('geminiKeyRotations');
                 }
 
@@ -117,8 +1390,23 @@ class GeminiService {
             }
         }
 
-        logger.error('[GEMINI] Todos los tokens de Gemini fallaron (Rate limit o Error).');
-        return "Disculpa, el sistema está experimentando una alta demanda y no puedo procesar tu solicitud en este instante. Por favor intenta en unos minutos. 🦉";
+        logger.error('[GEMINI] No se pudo completar la respuesta dentro del presupuesto de tiempo.');
+        this._recordCutoff('RESPONSE_TRUNCATED_TIMEOUT', this._withFailureDiagnostics({
+            attempts,
+            maxAttempts,
+            totalTimeoutMs: requestTimeoutBudgetMs,
+            phone: userPhone || null
+        }, attemptFailures));
+        requestDebug.status = 'FAILED';
+        requestDebug.finishedAt = Date.now();
+        requestDebug.final = {
+            reason: 'RESPONSE_TRUNCATED_TIMEOUT',
+            attempts,
+            maxAttempts
+        };
+        const fallback = 'Se cortó mi respuesta. Escríbeme de nuevo y te respondo enseguida.';
+        await this._appendFallbackToHistory(chatHistory, userMessage, fallback);
+        return fallback;
     }
 
     /**
@@ -144,16 +1432,13 @@ class GeminiService {
     /**
      * Envoltura de promesa con Timeout puro para abortar el request a LangChain
      */
-    async _generateWithTimeout(withHistory, userMessage) {
+    async _generateWithTimeout(chain, payload, timeoutMs) {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 reject(new GeminiAPIError('Timeout - El modelo tardó demasiado en responder'));
-            }, this.timeout);
+            }, timeoutMs);
 
-            withHistory.invoke(
-                { input: userMessage },
-                { configurable: { sessionId: "wa_session" } }
-            )
+            chain.invoke(payload)
             .then(result => {
                 clearTimeout(timer);
                 resolve(result);
@@ -166,15 +1451,23 @@ class GeminiService {
     }
 
     getStats() {
+        const now = Date.now();
         return {
             totalKeys: this.keys.length,
-            activeKeys: this.keys.filter(k => k.disabledUntil < Date.now()).length,
+            activeKeys: this.keys.filter(k => k.disabledUntil < now).length,
+            lastCutoff: this.lastCutoff,
+            lastRequestDebug: this.lastRequestDebug,
             keys: this.keys.map(k => ({
                 index: k.index + 1,
-                active: k.disabledUntil < Date.now(),
+                label: k.label,
+                active: k.disabledUntil < now,
                 totalCalls: k.totalCalls,
                 totalErrors: k.totalErrors,
-                failures: k.failures
+                failures: k.failures,
+                lastError: k.lastError,
+                lastErrorAt: k.lastErrorAt || null,
+                lastUsedAt: k.lastUsedAt || null,
+                disabledUntil: k.disabledUntil || null
             }))
         };
     }

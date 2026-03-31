@@ -1,7 +1,7 @@
 {
   "sitio": "VendeYa.pe",
   "url": "https://vendeya.pe/",
-  "ultima_actualizacion": "2026-03-24T06:16:32.942Z",
+  "ultima_actualizacion": "2026-03-26T19:51:35.020Z",
   "descripcion_general": "VendeYa.pe es el punto de venta con el flujo más rápido y simple del mundo. Permite vender y atender mucho más rápido a los clientes. Funciona con todos los rubros más populares del Perú. Es una extensión del ecosistema Pro8.",
   "caracteristicas_clave": [
     {
@@ -55,7 +55,15 @@
         "Úsalo con el dominio que quieras"
       ],
       "no_incluye": [],
-      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20VendeYa"
+      "url_pedido": "https://wa.me/51944999965?text=Hola,%20quiero%20empezar%20a%20usar%20VendeYa",
+      "ciclos_facturacion_extraidos": [
+        {
+          "ciclo": "Mensual",
+          "precio": "Gratis",
+          "descuento": "",
+          "precio_original": ""
+        }
+      ]
     },
     {
       "nombre": "VendeYa Compilado",
@@ -116,5 +124,63 @@
     "whatsapp": "+51 944 999 965",
     "web": "https://vendeya.pe",
     "empresa": "Digital Buho"
-  }
+  },
+  "documentacion": {
+    "paginas": [
+      {
+        "url": "https://manual.pro8.uio.la/vendeya/introduccion",
+        "titulo": "VendeYa.pe - Vende fácil, rápido y con facturación electrónica ⚡",
+        "resumen": "VendeYa.pe es una plataforma de venta rápida diseñada específicamente para negocios que requieren un flujo de caja ágil y continuo. Integrada con el Sistema de Facturación Pro 8 y Pro X, permite realizar ventas de manera eficiente mientras cumple con los requisitos de facturación electrónica de SUNAT en Perú.",
+        "secciones": [
+          "Introducción​",
+          "Descripción General​",
+          "Características Principales​",
+          "Casos de Uso Ideales​",
+          "Limitaciones Importantes​",
+          "Proceso de Venta Simplificado​",
+          "Integración con Pro 8 y Pro X​",
+          "Acceso y Configuración​",
+          "Soporte y Recursos Adicionales​"
+        ],
+        "puntos_clave": [
+          "Sistema de Facturación Pro 8",
+          "VendeYaIntroducciónIniciar SesiónNavegación por la InterfazFlujo de VentaVendeYA en cPanel",
+          "Introducción",
+          "Iniciar Sesión",
+          "Navegación por la Interfaz",
+          "Flujo de Venta",
+          "VendeYA en cPanel",
+          "Catálogo de Productos Accesible: Visualización rápida de productos con opción de filtrado por categorías.",
+          "Proceso de Venta Optimizado: Selección de productos y finalización de venta en pasos mínimos.",
+          "Emisión de Comprobantes: Generación instantánea de notas de venta o facturas electrónicas.",
+          "Gestión de Pagos: Cálculo automático de vuelto y múltiples opciones de ingreso de efectivo.",
+          "Interfaz Táctil: Diseñada para dispositivos táctiles para mayor velocidad en punto de venta.",
+          "Tiendas de conveniencia: Similar al flujo de Tambo o MASS, donde los clientes seleccionan productos y pagan rápidamente.",
+          "Cafeterías y restaurantes de comida rápida: Donde la velocidad de atención es prioritaria.",
+          "Kioscos y pequeños comercios: Con venta de productos de rotación rápida.",
+          "Mercados y ferias: Donde se requiere procesar múltiples ventas en poco tiempo.",
+          "No valida stock automáticamente: El negocio debe asegurarse de tener disponibilidad de los productos ofrecidos en el catálogo.",
+          "Orientado a flujo de caja rápido: No está diseñado para negocios que requieren procesos de venta complejos o personalizados.",
+          "Catálogo predefinido: Los productos deben estar previamente configurados en el sistema.",
+          "Inicio de sesión: Accede a https://vendeya.pe/auth/login con tus credenciales",
+          "Selección de caja: Elige la caja donde se registrarán los ingresos",
+          "Selección de productos: Navega por el catálogo y selecciona productos (con opción de filtrado por categorías)",
+          "Finalización de venta: Visualiza el total y confirma la venta",
+          "Emisión de comprobante: Selecciona entre nota de venta o factura electrónica",
+          "Registro de pago: Ingresa el monto recibido y calcula automáticamente el vuelto"
+        ],
+        "extraido_en": "2026-03-26T19:50:20.295Z"
+      }
+    ]
+  },
+  "resumen_documentacion": [
+    "Sistema de Facturación Pro 8",
+    "VendeYaIntroducciónIniciar SesiónNavegación por la InterfazFlujo de VentaVendeYA en cPanel",
+    "Introducción",
+    "Iniciar Sesión",
+    "Navegación por la Interfaz",
+    "Flujo de Venta",
+    "VendeYA en cPanel",
+    "Catálogo de Productos Accesible: Visualización rápida de productos con opción de filtrado por categorías."
+  ]
 }

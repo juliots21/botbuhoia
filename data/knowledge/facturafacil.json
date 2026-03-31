@@ -1,7 +1,7 @@
 {
   "sitio": "Factura Fácil - Perú",
   "url": "https://buho.la/store/facturafacil",
-  "ultima_actualizacion": "2026-03-24T06:05:16.882Z",
+  "ultima_actualizacion": "2026-03-26T19:47:42.657Z",
   "descripcion_general": "Factura Fácil es un sistema de facturación electrónica con punto de venta y conexión directa a SUNAT, diseñado para cuentas de una sola empresa. Ofrece planes desde gratuitos hasta ilimitados, escalando en número de usuarios y comprobantes.",
   "caracteristicas_clave": [
     {
@@ -48,78 +48,13 @@
       "url_pedido": "https://buho.la/store/facturafacil/factura-facil-ff-gratis",
       "ciclos_facturacion": [
         {
-          "ciclo": "Anual",
-          "precio": "S/79.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Anual",
-          "precio": "S/149.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Anual",
-          "precio": "S/259.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
           "ciclo": "Mensual",
-          "precio": "S/44.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/74.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/99.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/129.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/169.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/199.90 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/299.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/399.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Mensual",
-          "precio": "S/499.00 PEN",
+          "precio": "Gratis",
           "descuento": "",
           "precio_original": ""
         }
-      ]
+      ],
+      "segmento": "Emprendedores"
     },
     {
       "nombre": "Factura Fácil - F1",
@@ -145,7 +80,8 @@
           "descuento": "17%",
           "precio_original": "S/358.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Emprendedores"
     },
     {
       "nombre": "Factura Fácil - F2",
@@ -171,7 +107,8 @@
           "descuento": "17%",
           "precio_original": "S/538.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Emprendedores"
     },
     {
       "nombre": "Factura Fácil - F3",
@@ -209,6 +146,12 @@
           "precio_original": ""
         },
         {
+          "ciclo": "Trimestral",
+          "precio": "S/179.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
           "ciclo": "Semi-Anual",
           "precio": "S/359.00 PEN",
           "descuento": "",
@@ -220,7 +163,8 @@
           "descuento": "17%",
           "precio_original": "S/718.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F4",
@@ -246,7 +190,8 @@
           "descuento": "17%",
           "precio_original": "S/958.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F5",
@@ -267,6 +212,12 @@
           "precio_original": ""
         },
         {
+          "ciclo": "Trimestral",
+          "precio": "S/297.00 PEN",
+          "descuento": "",
+          "precio_original": ""
+        },
+        {
           "ciclo": "Semi-Anual",
           "precio": "S/594.00 PEN",
           "descuento": "",
@@ -278,7 +229,8 @@
           "descuento": "17%",
           "precio_original": "S/1188.00 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F6",
@@ -304,7 +256,8 @@
           "descuento": "17%",
           "precio_original": "S/1438.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F7",
@@ -330,7 +283,8 @@
           "descuento": "17%",
           "precio_original": "S/1678.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F8",
@@ -356,7 +310,8 @@
           "descuento": "17%",
           "precio_original": "S/1918.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - F9",
@@ -382,7 +337,8 @@
           "descuento": "17%",
           "precio_original": "S/2158.80 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     },
     {
       "nombre": "Factura Fácil - Ilimitado",
@@ -408,7 +364,8 @@
           "descuento": "17%",
           "precio_original": "S/2388.00 PEN"
         }
-      ]
+      ],
+      "segmento": "Profesionales"
     }
   ],
   "contacto": {

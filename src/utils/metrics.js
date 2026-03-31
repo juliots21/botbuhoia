@@ -30,8 +30,72 @@ class Metrics {
             messagesThisPeriod: 0
         };
 
+        this.userStats = new Map();
+        this.errorEvents = [];
+        this.maxErrorEvents = 200;
+
         // Reset de contadores periódicos cada minuto
         this.periodicInterval = setInterval(() => this.resetPeriodic(), 60000);
+    }
+
+    ensureUser(phone, userName = '') {
+        if (!phone) return null;
+        const current = this.userStats.get(phone) || {
+            phone,
+            userName: '',
+            firstSeenAt: Date.now(),
+            lastSeenAt: Date.now(),
+            messagesReceived: 0,
+            messagesProcessed: 0,
+            messagesFailed: 0,
+            totalLatencyMs: 0,
+            avgLatencyMs: 0,
+            lastLatencyMs: 0
+        };
+
+        if (userName && userName.trim()) {
+            current.userName = userName.trim();
+        }
+
+        current.lastSeenAt = Date.now();
+        this.userStats.set(phone, current);
+        return current;
+    }
+
+    trackUserReceived(phone, userName = '') {
+        const user = this.ensureUser(phone, userName);
+        if (!user) return;
+        user.messagesReceived += 1;
+    }
+
+    trackUserProcessed(phone, latencyMs = 0, userName = '') {
+        const user = this.ensureUser(phone, userName);
+        if (!user) return;
+        user.messagesProcessed += 1;
+        if (Number.isFinite(latencyMs) && latencyMs > 0) {
+            user.lastLatencyMs = latencyMs;
+            user.totalLatencyMs += latencyMs;
+            user.avgLatencyMs = Math.round(user.totalLatencyMs / user.messagesProcessed);
+        }
+    }
+
+    trackUserFailed(phone, userName = '') {
+        const user = this.ensureUser(phone, userName);
+        if (!user) return;
+        user.messagesFailed += 1;
+    }
+
+    recordError(component, message, context = {}) {
+        this.errorEvents.push({
+            timestamp: Date.now(),
+            component,
+            message,
+            context
+        });
+
+        if (this.errorEvents.length > this.maxErrorEvents) {
+            this.errorEvents = this.errorEvents.slice(-this.maxErrorEvents);
+        }
     }
 
     /**
@@ -90,6 +154,48 @@ class Metrics {
         };
     }
 
+    getReliabilityStats() {
+        const received = this.counters.messagesReceived || 0;
+        const processed = this.counters.messagesProcessed || 0;
+        const failed = this.counters.messagesFailed || 0;
+        const successRate = received > 0 ? ((processed / received) * 100).toFixed(2) : '0.00';
+        const failureRate = received > 0 ? ((failed / received) * 100).toFixed(2) : '0.00';
+
+        return {
+            successRate: Number(successRate),
+            failureRate: Number(failureRate),
+            received,
+            processed,
+            failed
+        };
+    }
+
+    getTopUsers(limit = 10) {
+        return Array.from(this.userStats.values())
+            .sort((a, b) => b.messagesReceived - a.messagesReceived)
+            .slice(0, limit)
+            .map((u) => ({
+                phone: u.phone,
+                userName: u.userName || '',
+                messagesReceived: u.messagesReceived,
+                messagesProcessed: u.messagesProcessed,
+                messagesFailed: u.messagesFailed,
+                avgLatencyMs: u.avgLatencyMs,
+                lastLatencyMs: u.lastLatencyMs,
+                lastSeenAt: u.lastSeenAt
+            }));
+    }
+
+    getRecentErrors(limit = 20) {
+        return this.errorEvents
+            .slice(-limit)
+            .reverse()
+            .map((e) => ({
+                ...e,
+                isoTime: new Date(e.timestamp).toISOString()
+            }));
+    }
+
     /**
      * Genera un reporte completo de métricas para el endpoint /health
      */
@@ -117,6 +223,12 @@ class Metrics {
             throughput: {
                 messagesPerMinute: this.periodicCounters.messagesThisPeriod,
                 totalProcessed: this.counters.messagesProcessed
+            },
+            reliability: this.getReliabilityStats(),
+            insights: {
+                topUsers: this.getTopUsers(12),
+                recentErrors: this.getRecentErrors(25),
+                trackedUsers: this.userStats.size
             },
             timestamp: new Date().toISOString()
         };

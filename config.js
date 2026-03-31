@@ -11,13 +11,21 @@ module.exports = {
             process.env.GEMINI_API_KEY_3,
             process.env.GEMINI_API_KEY_4
         ].filter(Boolean),
-        model: 'gemini-flash-latest',
+        model: 'gemini-2.5-flash',
         generationConfig: {
             temperature: 0.7,
             topP: 0.9,
-            maxOutputTokens: 1024
+            maxOutputTokens: 1100
         },
-        timeout: 30000, // 30 segundos de timeout por request
+        timeout: parseInt(process.env.GEMINI_TIMEOUT_MS || '25000', 10), // timeout por intento (perfil conservador 25000-28000)
+        totalTimeoutMs: parseInt(process.env.GEMINI_TOTAL_TIMEOUT_MS || '100000', 10), // presupuesto total por mensaje en hosting (perfil conservador 90000-120000)
+        maxAttemptsPerMessage: parseInt(process.env.GEMINI_MAX_ATTEMPTS || '2', 10),
+        retryKnowledgePromptChars: parseInt(process.env.GEMINI_RETRY_KNOWLEDGE_CHARS || '7000', 10),
+        initialHistoryWindow: parseInt(process.env.GEMINI_INITIAL_HISTORY_WINDOW || '14', 10),
+        retryHistoryWindow: parseInt(process.env.GEMINI_RETRY_HISTORY_WINDOW || '8', 10),
+        maxMessageCharsInHistory: parseInt(process.env.GEMINI_MAX_MESSAGE_CHARS_HISTORY || '900', 10),
+        // 0 = sin recorte (preservar contexto completo)
+        maxKnowledgePromptChars: parseInt(process.env.GEMINI_MAX_KNOWLEDGE_CHARS || '0', 10),
         circuitBreaker: {
             failureThreshold: 3,   // Fallos consecutivos antes de desactivar la key
             recoveryTimeMs: 120000 // 2 minutos antes de reintentar una key desactivada
@@ -29,12 +37,6 @@ module.exports = {
         phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
         verifyToken: process.env.WEBHOOK_VERIFY_TOKEN,
         apiUrl: 'https://graph.facebook.com/v22.0',
-        chunking: {
-            enabled: false,
-            maxChunkLength: 2000,       // Caracteres máximos por chunk
-            delayBetweenChunksMs: 800, // Delay entre chunks para simular escritura
-            typingIndicatorMs: 400     // Tiempo extra de "typing" antes de cada chunk
-        },
         retry: {
             maxRetries: 3,
             baseDelayMs: 1000, // Backoff exponencial: 1s, 2s, 4s
@@ -52,9 +54,22 @@ module.exports = {
         appSecret: process.env.META_APP_SECRET || null
     },
 
+    admin: {
+        apiToken: String(process.env.ADMIN_API_TOKEN || '').trim(),
+        allowDevFallbackToken: process.env.ADMIN_API_ALLOW_DEV_FALLBACK !== 'false'
+    },
+
     conversation: {
         maxHistoryMessages: 20,    // Máximo de mensajes en el historial
         inactivityTimeoutMs: 7200000 // 2 horas de inactividad para limpiar contexto
+    },
+
+    mysql: {
+        host: process.env.DB_HOST || '',
+        port: parseInt(process.env.DB_PORT || '3306', 10),
+        user: process.env.DB_USER || '',
+        password: process.env.DB_PASSWORD || '',
+        database: process.env.DB_NAME || ''
     },
 
     scraper: {
