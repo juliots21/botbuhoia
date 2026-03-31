@@ -4,1485 +4,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ia-buho - Panel de Administracion</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        :root {
-            --bg-deep: #0d141c;
-            --bg-main: #131c26;
-            --bg-soft: #1c2734;
-            --panel: rgba(23, 33, 46, 0.8);
-            --panel-strong: rgba(19, 28, 40, 0.92);
-            --line: rgba(167, 181, 200, 0.24);
-            --txt: #eef3fa;
-            --txt-soft: #b3c0d2;
-            --txt-muted: #93a4bb;
-            --ok: #22c55e;
-            --warn: #f59e0b;
-            --danger: #ef4444;
-            --accent: #2f6f8f;
-            --accent-2: #3f8f94;
-            --shadow: 0 14px 40px rgba(4, 9, 16, 0.46);
-        }
-
-        body {
-            font-family: Inter, sans-serif;
-            color: var(--txt);
-            min-height: 100vh;
-            background:
-                radial-gradient(circle at 8% 12%, rgba(63, 143, 148, 0.15), transparent 36%),
-                radial-gradient(circle at 88% 18%, rgba(47, 111, 143, 0.14), transparent 42%),
-                radial-gradient(circle at 22% 90%, rgba(148, 163, 184, 0.12), transparent 38%),
-                linear-gradient(180deg, var(--bg-main), var(--bg-deep));
-        }
-
-        .app-shell {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            border-right: 1px solid var(--line);
-            background: linear-gradient(180deg, rgba(22, 33, 48, 0.95), rgba(15, 23, 35, 0.94));
-            backdrop-filter: blur(12px);
-            padding: 22px 18px;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 22px;
-        }
-
-        .brand-mark {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            background: linear-gradient(145deg, var(--accent), var(--accent-2));
-            box-shadow: 0 8px 22px rgba(63, 143, 148, 0.28);
-            display: grid;
-            place-items: center;
-            font-size: 1.05rem;
-            font-weight: 800;
-        }
-
-        .brand-title {
-            font-size: 1rem;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        .brand-sub {
-            font-size: 0.74rem;
-            color: var(--txt-muted);
-            margin-top: 3px;
-        }
-
-        .nav-group {
-            display: grid;
-            gap: 8px;
-            margin-bottom: 22px;
-        }
-
-        .nav-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--txt-muted);
-            margin: 8px 4px;
-        }
-
-        .nav-link {
-            text-decoration: none;
-            color: var(--txt-soft);
-            border: 1px solid transparent;
-            border-radius: 10px;
-            padding: 9px 10px;
-            font-size: 0.84rem;
-            transition: all 0.2s ease;
-            background: rgba(22, 32, 47, 0.42);
-        }
-
-        .nav-link:hover {
-            color: var(--txt);
-            border-color: var(--line);
-            background: rgba(30, 43, 60, 0.62);
-        }
-
-        .status-card {
-            margin-top: auto;
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 12px;
-            background: rgba(18, 28, 41, 0.74);
-        }
-
-        .status-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.84rem;
-            margin-bottom: 6px;
-        }
-
-        .dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: var(--ok);
-            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-            animation: pulse 2s infinite;
-        }
-
-        .dot.offline {
-            background: var(--danger);
-            animation: none;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-            }
-
-            60% {
-                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-            }
-        }
-
-        .status-text {
-            font-size: 0.74rem;
-            color: var(--txt-soft);
-            line-height: 1.4;
-        }
-
-        .content {
-            padding: 20px 24px 26px;
-            display: grid;
-            gap: 16px;
-        }
-
-        .topbar {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            background: var(--panel-strong);
-            box-shadow: var(--shadow);
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-        }
-
-        .top-title {
-            font-size: 1.26rem;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .top-sub {
-            color: var(--txt-soft);
-            font-size: 0.83rem;
-        }
-
-        .pill {
-            border: 1px solid var(--line);
-            background: rgba(24, 36, 53, 0.72);
-            border-radius: 999px;
-            padding: 7px 12px;
-            font-size: 0.75rem;
-            color: var(--txt-soft);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(130px, 1fr));
-            gap: 12px;
-        }
-
-        .kpi {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            background: var(--panel);
-            padding: 14px;
-            box-shadow: var(--shadow);
-        }
-
-        .kpi-head {
-            font-size: 0.72rem;
-            color: var(--txt-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-        }
-
-        .kpi-value {
-            margin-top: 8px;
-            font-size: 1.7rem;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 420px 1fr;
-            gap: 14px;
-            align-items: start;
-        }
-
-        .stack {
-            display: grid;
-            gap: 14px;
-        }
-
-        .card {
-            border: 1px solid var(--line);
-            border-radius: 14px;
-            background: var(--panel);
-            box-shadow: var(--shadow);
-            padding: 16px;
-        }
-
-        .card h3 {
-            font-size: 1.02rem;
-            margin-bottom: 3px;
-            font-weight: 700;
-        }
-
-        .hint {
-            color: var(--txt-soft);
-            font-size: 0.78rem;
-            margin-bottom: 12px;
-        }
-
-        .subhead {
-            font-size: 0.83rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--txt-muted);
-            margin: 12px 0 8px;
-            padding-top: 10px;
-            border-top: 1px dashed var(--line);
-        }
-
-        .form-group {
-            margin-bottom: 11px;
-        }
-
-        label {
-            display: block;
-            font-size: 0.81rem;
-            margin-bottom: 6px;
-            color: var(--txt-soft);
-        }
-
-        input,
-        select {
-            width: 100%;
-            border: 1px solid var(--line);
-            background: rgba(19, 30, 43, 0.78);
-            border-radius: 11px;
-            color: var(--txt);
-            font-size: 0.9rem;
-            padding: 10px 11px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: rgba(63, 143, 148, 0.9);
-            box-shadow: 0 0 0 3px rgba(63, 143, 148, 0.2);
-        }
-
-        .row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 8px;
-            align-items: end;
-        }
-
-        .actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
-        button {
-            border: none;
-            border-radius: 11px;
-            padding: 9px 13px;
-            font-size: 0.84rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.15s ease, opacity 0.15s ease;
-        }
-
-        button:hover {
-            transform: translateY(-1px);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        .primary {
-            color: #fff;
-            background: linear-gradient(135deg, #2f6f8f, #2f5f80);
-        }
-
-        .ghost {
-            color: var(--txt-soft);
-            background: rgba(22, 31, 44, 0.66);
-            border: 1px solid var(--line);
-        }
-
-        .meta-strip {
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            padding: 10px;
-            background: rgba(19, 29, 42, 0.72);
-            color: var(--txt-soft);
-            font-size: 0.79rem;
-            min-height: 52px;
-        }
-
-        .config-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: repeat(6, minmax(130px, 1fr));
-            gap: 10px;
-            margin-bottom: 12px;
-        }
-
-        .metric {
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            background: rgba(20, 31, 45, 0.66);
-            padding: 10px;
-        }
-
-        .metric .v {
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
-
-        .metric .l {
-            margin-top: 4px;
-            font-size: 0.7rem;
-            color: var(--txt-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1.25fr 1fr;
-            gap: 12px;
-        }
-
-        .table-wrap {
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            overflow: auto;
-            max-height: 280px;
-            margin-top: 10px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-
-        th,
-        td {
-            padding: 8px 10px;
-            text-align: left;
-            border-bottom: 1px solid var(--line);
-            vertical-align: top;
-        }
-
-        th {
-            color: var(--txt-muted);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            position: sticky;
-            top: 0;
-            background: rgba(16, 24, 36, 0.97);
-        }
-
-        .badge {
-            display: inline-flex;
-            border-radius: 999px;
-            padding: 2px 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
-        }
-
-        .ok {
-            background: rgba(34, 197, 94, 0.22);
-            color: #8cf6b1;
-        }
-
-        .bad {
-            background: rgba(239, 68, 68, 0.22);
-            color: #ffaeae;
-        }
-
-        .list {
-            display: grid;
-            gap: 8px;
-            margin-top: 10px;
-            max-height: 280px;
-            overflow: auto;
-        }
-
-        .list-item {
-            border: 1px solid var(--line);
-            border-radius: 11px;
-            background: rgba(20, 31, 45, 0.66);
-            padding: 10px;
-        }
-
-        .list-item h4 {
-            font-size: 0.83rem;
-            margin-bottom: 3px;
-        }
-
-        .list-item p {
-            font-size: 0.76rem;
-            color: var(--txt-soft);
-            line-height: 1.4;
-        }
-
-        .toast-wrap {
-            position: fixed;
-            right: 16px;
-            bottom: 16px;
-            display: grid;
-            gap: 8px;
-            z-index: 100;
-        }
-
-        .toast {
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            background: rgba(15, 22, 33, 0.95);
-            padding: 10px 12px;
-            font-size: 0.8rem;
-        }
-
-        .debug-console {
-            margin-top: 10px;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            background: rgba(10, 16, 24, 0.95);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.76rem;
-            line-height: 1.45;
-            padding: 10px;
-            min-height: 160px;
-            max-height: 300px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .debug-raw {
-            margin-top: 8px;
-            border: 1px solid var(--line);
-            border-radius: 10px;
-            background: rgba(10, 16, 24, 0.95);
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.74rem;
-            line-height: 1.45;
-            padding: 10px;
-            max-height: 320px;
-            overflow: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        @media (max-width: 1320px) {
-            .stats {
-                grid-template-columns: repeat(3, minmax(130px, 1fr));
-            }
-
-            .metrics {
-                grid-template-columns: repeat(4, minmax(130px, 1fr));
-            }
-
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .detail-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 980px) {
-            .app-shell {
-                grid-template-columns: 1fr;
-            }
-
-            .sidebar {
-                position: static;
-                height: auto;
-                border-right: 0;
-                border-bottom: 1px solid var(--line);
-            }
-
-            .config-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .metrics {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
-        }
-    </style>
+    <title>Digital Buho | Nocturnal AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
 </head>
 
 <body>
-    <div class="app-shell">
-        <aside class="sidebar">
-            <div class="brand">
-                <div class="brand-mark">🦉</div>
-                <div>
-                    <div class="brand-title">ia-buho</div>
-                    <div class="brand-sub">Control Center</div>
+    
+    <div class="layout-wrapper" id="appRoot">
+
+        <!-- LEYENDA IZQUIERDA: SIDEBAR -->
+        <aside class="sidebar slide-in-left">
+            <div class="brand-area">
+                <div class="brand-title">NOCTURNAL <span>AI</span></div>
+            </div>
+
+            <nav class="side-menu">
+                <a href="#" class="active">
+                    <span class="menu-icon">◱</span> Dashboard
+                </a>
+                <a href="#">
+                    <span class="menu-icon">⚡</span> Intelligence
+                </a>
+                <a href="#">
+                    <span class="menu-icon">∞</span> Nexus Protocol
+                </a>
+                <a href="#">
+                    <span class="menu-icon">🛡</span> Security
+                </a>
+                <a href="#">
+                    <span class="menu-icon">🗄</span> Archives
+                </a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <div style="margin-bottom: 2rem; padding: 0 1rem;">
+                    <h4 class="kpi-title" style="margin-bottom: 8px;">Uptime Global</h4>
+                    <span id="sUptime" class="color-accent font-bold" style="font-size: 1.1rem;">-</span>
                 </div>
-            </div>
-
-            <div class="nav-group">
-                <div class="nav-label">Navegacion</div>
-                <a href="#resumen" class="nav-link">Resumen de salud</a>
-                <a href="#usuarios" class="nav-link">Usuarios y contexto</a>
-                <a href="#config" class="nav-link">Configuracion operativa</a>
-                <a href="#metricas" class="nav-link">Diagnostico avanzado</a>
-            </div>
-
-            <div class="nav-group">
-                <div class="nav-label">Atajos utiles</div>
-                <a href="/health" class="nav-link" target="_blank" rel="noopener noreferrer">Abrir /health</a>
-                <a href="#" class="nav-link" onclick="openSecuredEndpoint('/api/users'); return false;">Abrir /api/users
-                    (token)</a>
-                <a href="#" class="nav-link" onclick="openSecuredEndpoint('/api/config'); return false;">Abrir
-                    /api/config (token)</a>
-            </div>
-
-            <div class="nav-group">
-                <div class="nav-label">Seguridad Admin API</div>
-                <input id="adminTokenInput" type="password" placeholder="ADMIN_API_TOKEN"
-                    style="width:100%; padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:#0f1621; color:var(--text);" />
-                <div class="row" style="margin-top:8px;">
-                    <button class="ghost" style="width:100%;" onclick="saveAdminToken()">Guardar token</button>
+                <!-- Massive Deploy Button matching the screenshot -->
+                <button class="btn-deploy" onclick="saveAdminToken()">AUTENTICAR NÚCLEO</button>
+                <div class="auth-meta">
+                    <span class="pulse-dot-green" id="statusDot" style="width: 8px; height: 8px; border-radius: 50%; display:inline-block; margin-right:6px; background: currentColor;"></span>
+                    <span id="statusText">Buscando conexión...</span>
                 </div>
-                <div class="status-text" id="adminTokenStatus" style="margin-top:8px;">Token no configurado en este
-                    navegador.</div>
-            </div>
-
-            <div class="status-card">
-                <div class="status-row"><span class="dot" id="statusDot"></span><strong
-                        id="statusText">Conectando...</strong></div>
-                <div class="status-text">El panel se actualiza automaticamente cada 10 segundos.</div>
             </div>
         </aside>
 
-        <main class="content">
-            <section class="topbar" id="resumen">
-                <div>
-                    <div class="top-title">Panel de Administracion</div>
-                    <div class="top-sub">Configuracion por usuario de WhatsApp, controles de IA y metricas de operacion
-                        en tiempo real.</div>
+        <!-- ESPACIO PRINCIPAL: MAIN CONTENT -->
+        <main class="main-content fade-in-up">
+            
+            <!-- TOPBAR -->
+            <header class="top-nav">
+                <div class="breadcrumbs">
+                    <span class="muted">Digital Buho</span> <span class="sep">/</span> <span class="active">Panel de Control</span>
                 </div>
-                <div class="pill">Version profesional del dashboard operativo</div>
-            </section>
+                <div class="auth-bar">
+                    <div id="adminTokenStatus" style="font-size: 0.65rem; color: var(--on-surface-variant); display: none;"></div>
+                    <input id="adminTokenInput" type="password" placeholder="ADMIN_TOKEN / API_KEY" autocomplete="off" />
+                </div>
+            </header>
 
-            <section class="stats">
-                <article class="kpi">
-                    <div class="kpi-head">Mensajes Recibidos</div>
-                    <div class="kpi-value" id="sReceived">-</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-head">Procesados</div>
-                    <div class="kpi-value" id="sProcessed">-</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-head">Fallidos</div>
-                    <div class="kpi-value" id="sFailed">-</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-head">Latencia Promedio</div>
-                    <div class="kpi-value" id="sLatency">-</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-head">Conversaciones Activas</div>
-                    <div class="kpi-value" id="sActive">-</div>
-                </article>
-                <article class="kpi">
-                    <div class="kpi-head">Uptime</div>
-                    <div class="kpi-value" id="sUptime">-</div>
-                </article>
-            </section>
+            <!-- GRID PRINCIPAL -->
+            <div class="dashboard-grid">
 
-            <section class="layout" id="usuarios">
-                <div class="stack">
-                    <article class="card">
-                        <h3>Usuarios WhatsApp</h3>
-                        <p class="hint">Selecciona un contacto detectado o carga uno manual para aplicar configuraciones
-                            específicas.</p>
+                <!-- HERO CARD (Top Left, massive) -->
+                <div class="card hero-card span-8 delay-1">
+                    <div class="card-pulse">
+                        <span class="pulse-dot-primary"></span>
+                        SYSTEM PULSE ACTIVE
+                    </div>
+                    
+                    <h1 class="hero-title">Digital Buho Core</h1>
+                    <p class="hero-desc">
+                        Neural throughput is currently optimizing traffic. All autonomous nodes and Gemini integration reporting health status across cloud clusters. Confiabilidad AI: <strong id="mReliability" class="color-ok">-</strong>
+                    </p>
 
-                        <div class="form-group">
-                            <label for="userSelect">Usuario detectado</label>
-                            <select id="userSelect"></select>
+                    <div class="hero-stats">
+                        <div class="stat-block">
+                            <span class="label">ACTIVE FLOWS (SESIONES)</span>
+                            <strong class="value" id="sActive">-</strong>
                         </div>
+                        <div class="stat-line"></div>
+                        <div class="stat-block">
+                            <span class="label">NEURAL LOAD (MpM)</span>
+                            <strong class="value" id="mMpm">-</strong>
+                        </div>
+                        <div class="stat-line"></div>
+                        <div class="stat-block">
+                            <span class="label">LATENCIA P50</span>
+                            <strong class="value" id="mP50">-</strong>
+                        </div>
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label for="manualPhone">Agregar o cargar por número</label>
-                                <input id="manualPhone" placeholder="Ejemplo: 986079838" />
+                <!-- RIGHT STACKED CARDS (Top Right) -->
+                <div class="kpi-stack span-4 delay-2">
+                    <div class="card mini-banner">
+                        <div>
+                            <span class="label">TOTAL MESSAGES RECIBIDOS</span>
+                            <strong class="big-val" id="sReceived">-</strong>
+                        </div>
+                        <div class="trend positive">▲ ACTIVO</div>
+                    </div>
+                    
+                    <div class="card mini-banner">
+                        <div>
+                            <span class="label">MESSAGES PROCESADOS OK</span>
+                            <strong class="big-val color-ok" id="sProcessed">-</strong>
+                        </div>
+                        <div class="trend">100%</div>
+                    </div>
+
+                    <div class="card mini-banner">
+                        <div>
+                            <span class="label">RECHAZADOS / ERRORES</span>
+                            <strong class="big-val color-err" id="sFailed">-</strong>
+                        </div>
+                        <div class="trend negative">Alertas</div>
+                    </div>
+                </div>
+
+                <!-- MIDDLE LEFT: SYSTEM TRAFFIC -->
+                <div class="card system-traffic span-8 delay-3">
+                    <div class="card-header">
+                        <h3>System Traffic & Telemetry</h3>
+                        <div class="traffic-filters">
+                            <span class="filter">24H</span>
+                            <span class="filter active">7D</span>
+                            <span class="filter">30D</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Reusando la grilla de métricas pequeñas aquí adentro -->
+                    <div class="metrics-grid">
+                        <div class="micro-stat">
+                            <span class="label">MEMORIA HEAP</span>
+                            <strong class="value" id="mHeap">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">LATENCIA P99</span>
+                            <strong class="value" id="mP99">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">DUPLICADOS RED</span>
+                            <strong class="value" id="mDup">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">SPAM BLOCK HITS</span>
+                            <strong class="value color-warn" id="mRateHit">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">WHATSAPP ENVIADOS</span>
+                            <strong class="value" id="mWAOk">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">WHATSAPP ERRORES</span>
+                            <strong class="value color-err" id="mWAErr">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">GEMINI LLAMADAS OK</span>
+                            <strong class="value" id="mGemCalls">-</strong>
+                        </div>
+                        <div class="micro-stat">
+                            <span class="label">GEMINI ERRORES</span>
+                            <strong class="value color-err" id="mGemErr">-</strong>
+                        </div>
+                        <div class="micro-stat" style="display:none;" id="sLatency">-</div>
+                        <div class="micro-stat" style="display:none;" id="mP95">-</div>
+                    </div>
+
+                    <!-- Botones de Debug ocultos y Global Settings dentro del tráfico -->
+                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ghost-border);">
+                        <h4 class="kpi-title" style="margin-bottom: 1rem;">Comportamiento Retentivo (Memoria de Corto Plazo)</h4>
+                        <div class="inline-form">
+                            <div class="form-group">
+                                <label>Límite max historial</label>
+                                <input id="gConvoMaxHistory" type="number" />
                             </div>
-                            <button class="ghost" onclick="selectManualPhone()">Cargar</button>
+                            <div class="form-group">
+                                <label>Timeout memoria (ms)</label>
+                                <input id="gConvoTimeout" type="number" />
+                            </div>
+                            <button class="btn-outline" style="align-self: flex-end;" onclick="saveGlobalConversation()">Aplicar Contexto Global</button>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="subhead">Ficha del usuario</div>
-                        <div id="userMeta" class="meta-strip">Sin usuario seleccionado.</div>
-                    </article>
+                <!-- RIGHT TALL BOX (Bot Configuration) -->
+                <div class="card config-card span-4 row-span-2 delay-4">
+                    <div class="card-header">
+                        <h3>Bot Configuration</h3>
+                    </div>
 
-                    <article class="card">
-                        <h3>Conversaciones (Global)</h3>
-                        <p class="hint">Este bloque se aplica al manejo global del contexto conversacional del bot.</p>
+                    <div class="minimal-form">
+                        <!-- User Context injected here -->
+                        <div class="form-group">
+                            <label>TARGET IDENTITY (INJECT PHONE)</label>
+                            <input id="manualPhone" placeholder="Ej: 51986079838" />
+                            <div style="margin-top: 6px;">
+                                <button class="btn-outline" style="width: 100%; font-size: 0.75rem;" onclick="selectManualPhone()">Cargar Nodo</button>
+                            </div>
+                        </div>
 
                         <div class="form-group">
-                            <label>Máximo de mensajes en historial</label>
-                            <input id="gConvoMaxHistory" type="number" min="4" max="100" step="2" />
-                        </div>
-                        <div class="form-group">
-                            <label>Timeout de inactividad (ms)</label>
-                            <input id="gConvoTimeout" type="number" min="60000" step="60000" />
+                            <label>ACTIVE ENTITIES (USER ACCOUNTS)</label>
+                            <select id="userSelect"></select>
+                            <div id="userMeta" style="font-size: 0.7rem; color: var(--on-surface-variant); padding-top: 4px;">Esperando selección...</div>
                         </div>
 
-                        <div class="actions">
-                            <button class="ghost" onclick="loadGeneralConfig()">Recargar</button>
-                            <button class="primary" onclick="saveGlobalConversation()">Guardar global</button>
+                        <!-- Antimafia Rate limit -->
+                        <div style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1rem;">
+                            <label class="kpi-title color-accent" style="margin-bottom: 10px; display:block;">PROTOCOL: ANTIMAFIA RATE LIMIT</label>
+                            <div class="grid-2-cols">
+                                <div class="form-group"><label>Límite Msgs</label><input id="uRateMax" type="number" /></div>
+                                <div class="form-group"><label>Ventana (ms)</label><input id="uRateWindow" type="number" /></div>
+                                <div class="form-group col-span-2"><label>Cooldown (ms)</label><input id="uRateCooldown" type="number" /></div>
+                            </div>
+                            <button class="btn-outline" style="width:100%; margin-top: 1rem;" onclick="saveUserSection('rateLimiting')">UPDATE CONTROL PROTOCOL</button>
                         </div>
-                    </article>
-                </div>
 
-                <div class="stack" id="config">
-                    <article class="card">
-                        <h3>Configuracion del Usuario Seleccionado</h3>
-                        <p class="hint">Ajustes de protección y comportamiento de IA por contacto.</p>
-
-                        <div class="config-grid">
-                            <section>
-                                <div class="subhead" style="margin-top:0;">Rate Limiting</div>
-
-                                <div class="form-group">
-                                    <label>Mensajes por ventana</label>
-                                    <input id="uRateMax" type="number" min="1" max="100" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Ventana (ms)</label>
-                                    <input id="uRateWindow" type="number" min="1000" step="1000" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Cooldown (ms)</label>
-                                    <input id="uRateCooldown" type="number" min="1000" step="1000" />
-                                </div>
-                                <div class="actions">
-                                    <button class="ghost" onclick="loadSelectedUserConfig()">Recargar</button>
-                                    <button class="primary" onclick="saveUserSection('rateLimiting')">Guardar
-                                        usuario</button>
-                                </div>
-                            </section>
-
-                            <section>
-                                <div class="subhead" style="margin-top:0;">Gemini IA</div>
-
-                                <div class="form-group">
-                                    <label>Temperature</label>
-                                    <input id="uGemTemp" type="number" min="0" max="2" step="0.1" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Max Output Tokens</label>
-                                    <input id="uGemTokens" type="number" min="100" max="8192" step="100" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Timeout (ms)</label>
-                                    <input id="uGemTimeout" type="number" min="18000" step="1000" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Circuit Breaker: failure threshold</label>
-                                    <input id="uGemFail" type="number" min="1" max="20" />
-                                </div>
-                                <div class="form-group">
-                                    <label>Circuit Breaker: recovery (ms)</label>
-                                    <input id="uGemRecovery" type="number" min="1000" step="1000" />
-                                </div>
-                                <div class="actions">
-                                    <button class="ghost" onclick="loadSelectedUserConfig()">Recargar</button>
-                                    <button class="primary" onclick="saveUserSection('gemini')">Guardar usuario</button>
-                                </div>
-                            </section>
+                        <!-- Gemini per user -->
+                        <div style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1.5rem;">
+                            <label class="kpi-title color-accent" style="margin-bottom: 10px; display:block;">PROTOCOL: GEMINI AI PERSONA</label>
+                            <div class="grid-2-cols">
+                                <div class="form-group"><label>Creativity (Temp)</label><input id="uGemTemp" type="number" step="0.1" /></div>
+                                <div class="form-group"><label>Max Tokens</label><input id="uGemTokens" type="number" /></div>
+                                <div class="form-group"><label>Hard Timeout</label><input id="uGemTimeout" type="number" /></div>
+                                <div class="form-group"><label>Max Fallos</label><input id="uGemFail" type="number" /></div>
+                                <div class="form-group col-span-2"><label>Tiempo Recuperación</label><input id="uGemRecovery" type="number" /></div>
+                            </div>
+                            <button class="btn-primary" style="width:100%; border-radius: 8px; margin-top: 1rem;" onclick="saveUserSection('gemini')">DEFLATE & OVERRIDE PERSONA</button>
                         </div>
-                    </article>
-                </div>
-            </section>
 
-            <section class="card" id="metricas">
-                <div class="actions"
-                    style="margin-top: 0; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div>
-                        <h3>Diagnostico Operativo Avanzado</h3>
-                        <p class="hint" style="margin-bottom:0;">Monitoreo de llamadas, fiabilidad, distribución de
-                            errores y estado de claves.</p>
-                    </div>
-                    <button class="ghost" onclick="refreshMetrics()">Actualizar</button>
-                </div>
-
-                <div class="metrics">
-                    <div class="metric">
-                        <div class="v" id="mGemCalls">-</div>
-                        <div class="l">Llamadas Gemini</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mGemErr">-</div>
-                        <div class="l">Errores Gemini</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mWAOk">-</div>
-                        <div class="l">WhatsApp Enviados</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mWAErr">-</div>
-                        <div class="l">Errores WhatsApp</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mRateHit">-</div>
-                        <div class="l">Rate Limit Hits</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mDup">-</div>
-                        <div class="l">Duplicados</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mP50">-</div>
-                        <div class="l">P50</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mP95">-</div>
-                        <div class="l">P95</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mP99">-</div>
-                        <div class="l">P99</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mHeap">-</div>
-                        <div class="l">Heap</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mMpm">-</div>
-                        <div class="l">Msgs/min</div>
-                    </div>
-                    <div class="metric">
-                        <div class="v" id="mReliability">-</div>
-                        <div class="l">Tasa Exito</div>
                     </div>
                 </div>
 
-                <article style="margin-top:12px;">
-                    <h3 style="font-size:0.9rem;">Ultimo corte de respuesta Gemini</h3>
-                    <div class="list" id="lastCutoffBox">
-                        <div class="list-item">
-                            <p>Sin eventos de corte registrados.</p>
+                <!-- API KEYS & RAW COMMANDS (Bottom Span 8) -->
+                <div class="card span-8 delay-5" style="margin-bottom: 2rem;">
+                    <div class="card-header" style="justify-content: space-between;">
+                        <h3>Pool de Llaves AI (Circuit Breakers)</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/api/config')">Ver /api/config</button>
+                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/api/users')">Ver /api/users</button>
+                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/health')">Ver /health</button>
                         </div>
                     </div>
-                </article>
-
-                <div class="detail-grid">
-                    <article>
-                        <h3 style="font-size:0.9rem;">Estado detallado de API Keys</h3>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Estado</th>
-                                        <th>Llamadas</th>
-                                        <th>Errores</th>
-                                        <th>Ultimo error</th>
-                                        <th>Deshabilitada hasta</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="keysBody">
-                                    <tr>
-                                        <td colspan="6">Cargando...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    
+                    <div class="clean-list" id="keysList">
+                        <div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">
+                            Cargando pool de llaves...
                         </div>
-                    </article>
-
-                    <article>
-                        <h3 style="font-size:0.9rem;">Top usuarios por tráfico</h3>
-                        <div class="list" id="topUsersList"></div>
-                    </article>
+                    </div>
                 </div>
 
-                <article style="margin-top:12px;">
-                    <h3 style="font-size:0.9rem;">Errores recientes con contexto</h3>
-                    <div class="list" id="recentErrorsList"></div>
-                </article>
-
-                <article style="margin-top:12px;">
-                    <div class="actions"
-                        style="margin-top:0; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h3 style="font-size:0.9rem; margin:0;">Consola Debug Index</h3>
-                        <div style="display:flex; gap:8px;">
-                            <button class="ghost" onclick="toggleDebugConsole()" id="debugToggleBtn">Debug ON</button>
-                            <button class="ghost" onclick="copyDebugConsole()">Copiar</button>
-                            <button class="ghost" onclick="clearDebugConsole()">Limpiar</button>
-                        </div>
-                    </div>
-                    <p class="hint" style="margin-bottom: 6px;">Traza en vivo de requests del panel, refresh de health y
-                        detalle técnico de Gemini.</p>
-                    <div class="debug-console" id="debugConsole"></div>
-                    <details style="margin-top:10px;">
-                        <summary style="cursor:pointer; color: var(--txt-soft);">Payload crudo de Gemini desde /health
-                        </summary>
-                        <pre class="debug-raw" id="geminiRawPayload">Sin datos aún.</pre>
-                    </details>
-                </article>
-            </section>
+            </div>
         </main>
+        
+        <!-- TOASTS -->
+        <div class="toast-wrap" id="toastWrap"></div>
     </div>
-
-    <div class="toast-wrap" id="toastWrap"></div>
-
-    <script>
-        const API_BASE = window.location.origin;
-        const ADMIN_TOKEN_STORAGE_KEY = 'iaBuhoAdminApiToken';
-        const DEBUG_MAX_LINES = 220;
-
-        let selectedUserPhone = '';
-        let adminToken = '';
-        let debugEnabled = true;
-        let debugLines = [];
-        let lastHealthPayload = null;
-        let lastCutoffLoggedAt = 0;
-        let lastRequestDebugId = '';
-
-        function debugLog(message, data = null, level = 'log') {
-            if (!debugEnabled) return;
-
-            const ts = new Date().toLocaleTimeString();
-            const serialized = data ? ' | ' + JSON.stringify(data) : '';
-            const line = `[${ts}] ${String(message || '')}${serialized}`;
-
-            debugLines.push(line);
-            if (debugLines.length > DEBUG_MAX_LINES) {
-                debugLines = debugLines.slice(debugLines.length - DEBUG_MAX_LINES);
-            }
-
-            const box = document.getElementById('debugConsole');
-            if (box) {
-                box.textContent = debugLines.join('\n');
-                box.scrollTop = box.scrollHeight;
-            }
-
-            if (level === 'error') {
-                console.error('[INDEX DEBUG]', message, data || '');
-            } else if (level === 'warn') {
-                console.warn('[INDEX DEBUG]', message, data || '');
-            } else {
-                console.log('[INDEX DEBUG]', message, data || '');
-            }
-        }
-
-        function clearDebugConsole() {
-            debugLines = [];
-            const box = document.getElementById('debugConsole');
-            if (box) box.textContent = '';
-            debugLog('Consola debug limpiada manualmente.');
-        }
-
-        async function copyDebugConsole() {
-            try {
-                const text = debugLines.join('\n');
-                await navigator.clipboard.writeText(text || 'Sin logs en consola debug.');
-                showToast('Consola debug copiada');
-            } catch (_) {
-                showToast('No se pudo copiar la consola debug');
-            }
-        }
-
-        function toggleDebugConsole() {
-            debugEnabled = !debugEnabled;
-            const btn = document.getElementById('debugToggleBtn');
-            if (btn) {
-                btn.textContent = debugEnabled ? 'Debug ON' : 'Debug OFF';
-            }
-            if (debugEnabled) {
-                debugLog('Debug reactivado.');
-            }
-        }
-
-        function getStoredAdminToken() {
-            return String(localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || '').trim();
-        }
-
-        function setStoredAdminToken(token) {
-            const value = String(token || '').trim();
-            if (!value) {
-                localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-                return;
-            }
-
-            localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, value);
-        }
-
-        function updateAdminTokenStatus() {
-            const status = document.getElementById('adminTokenStatus');
-            const input = document.getElementById('adminTokenInput');
-            const hasToken = Boolean(adminToken);
-            status.textContent = hasToken
-                ? 'Token cargado. API administrativa protegida lista.'
-                : 'Token no configurado en este navegador.';
-            if (input) {
-                input.value = adminToken;
-            }
-        }
-
-        function ensureAdminToken() {
-            adminToken = getStoredAdminToken();
-            if (adminToken) return true;
-
-            const entered = window.prompt('Ingresa tu ADMIN_API_TOKEN para usar el panel:');
-            if (!entered) {
-                updateAdminTokenStatus();
-                return false;
-            }
-
-            adminToken = String(entered).trim();
-            setStoredAdminToken(adminToken);
-            updateAdminTokenStatus();
-            return Boolean(adminToken);
-        }
-
-        function saveAdminToken() {
-            const input = document.getElementById('adminTokenInput');
-            const value = String(input?.value || '').trim();
-            adminToken = value;
-            setStoredAdminToken(value);
-            updateAdminTokenStatus();
-            showToast(value ? 'Token guardado' : 'Token eliminado');
-        }
-
-        function buildAuthHeaders(base = {}) {
-            const headers = { ...base };
-            if (adminToken) {
-                headers['Authorization'] = 'Bearer ' + adminToken;
-                headers['X-Admin-Token'] = adminToken;
-            }
-            return headers;
-        }
-
-        async function fetchJSON(url, options = {}) {
-            const method = String(options.method || 'GET').toUpperCase();
-            const t0 = Date.now();
-            debugLog(`HTTP ${method} ${url} -> inicio`);
-
-            const customHeaders = options.headers || {};
-            const body = options.body;
-            const defaultHeaders = body !== undefined
-                ? { 'Content-Type': 'application/json' }
-                : {};
-
-            const res = await fetch(API_BASE + url, {
-                ...options,
-                headers: buildAuthHeaders({ ...defaultHeaders, ...customHeaders })
-            });
-
-            if (!res.ok) {
-                let payload = null;
-                try {
-                    payload = await res.json();
-                } catch (_) {
-                    payload = null;
-                }
-
-                const serverMessage = payload && payload.error ? String(payload.error) : '';
-                debugLog(`HTTP ${method} ${url} -> error ${res.status}`, {
-                    status: res.status,
-                    elapsedMs: Date.now() - t0,
-                    error: serverMessage || ('HTTP ' + res.status)
-                }, 'error');
-                if (res.status === 401 || res.status === 403) {
-                    throw new Error(serverMessage || 'No autorizado: revisa ADMIN_API_TOKEN');
-                }
-                throw new Error(serverMessage || ('HTTP ' + res.status));
-            }
-            const payload = await res.json();
-            debugLog(`HTTP ${method} ${url} -> ok`, {
-                status: res.status,
-                elapsedMs: Date.now() - t0
-            });
-            return payload;
-        }
-
-        async function openSecuredEndpoint(path) {
-            try {
-                if (!adminToken && !ensureAdminToken()) {
-                    showToast('Necesitas token para abrir ese endpoint');
-                    return;
-                }
-
-                const data = await fetchJSON(path);
-                const popup = window.open('', '_blank', 'noopener,noreferrer');
-                if (!popup) {
-                    showToast('Activa ventanas emergentes para abrir la respuesta');
-                    return;
-                }
-
-                popup.document.write('<pre style="white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Consolas,monospace;padding:16px;">' +
-                    JSON.stringify(data, null, 2)
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;') +
-                    '</pre>');
-                popup.document.close();
-            } catch (err) {
-                debugLog('openSecuredEndpoint fallo', { path, error: err.message || String(err) }, 'error');
-                showToast(err.message || 'No se pudo abrir endpoint protegido');
-            }
-        }
-
-        function showToast(message) {
-            const wrap = document.getElementById('toastWrap');
-            const el = document.createElement('div');
-            el.className = 'toast';
-            el.textContent = message;
-            wrap.appendChild(el);
-            setTimeout(() => {
-                el.remove();
-            }, 2600);
-        }
-
-        function formatTs(ts) {
-            if (!ts) return '-';
-            const d = new Date(ts);
-            if (Number.isNaN(d.getTime())) return '-';
-            return d.toLocaleString();
-        }
-
-        async function loadGeneralConfig() {
-            try {
-                const cfg = await fetchJSON('/api/config');
-                document.getElementById('gConvoMaxHistory').value = cfg.conversation.maxHistoryMessages;
-                document.getElementById('gConvoTimeout').value = cfg.conversation.inactivityTimeoutMs;
-            } catch (err) {
-                showToast('No se pudo cargar configuracion global');
-            }
-        }
-
-        async function saveGlobalConversation() {
-            try {
-                await fetchJSON('/api/config', {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        section: 'conversation',
-                        data: {
-                            maxHistoryMessages: parseInt(document.getElementById('gConvoMaxHistory').value),
-                            inactivityTimeoutMs: parseInt(document.getElementById('gConvoTimeout').value)
-                        }
-                    })
-                });
-                showToast('Conversaciones global actualizada');
-            } catch (err) {
-                showToast('Error guardando configuracion global');
-            }
-        }
-
-        async function loadUsers() {
-            try {
-                const data = await fetchJSON('/api/users');
-                const users = data.users || [];
-                const select = document.getElementById('userSelect');
-
-                if (users.length === 0) {
-                    select.innerHTML = '<option value="">Sin usuarios detectados</option>';
-                    return;
-                }
-
-                select.innerHTML = users.map((u) => {
-                    const name = u.userName ? ' - ' + u.userName : '';
-                    return `<option value="${u.phone}">${u.phone}${name}</option>`;
-                }).join('');
-
-                if (!selectedUserPhone || !users.some((u) => u.phone === selectedUserPhone)) {
-                    selectedUserPhone = users[0].phone;
-                }
-
-                select.value = selectedUserPhone;
-                await loadSelectedUserConfig();
-            } catch (err) {
-                showToast('No se pudo cargar usuarios');
-            }
-        }
-
-        async function selectManualPhone() {
-            const phone = String(document.getElementById('manualPhone').value || '').trim();
-            if (!phone) {
-                showToast('Ingresa un numero de WhatsApp');
-                return;
-            }
-
-            selectedUserPhone = phone;
-            await loadSelectedUserConfig();
-            await loadUsers();
-        }
-
-        async function loadSelectedUserConfig() {
-            const select = document.getElementById('userSelect');
-            const selected = String(select.value || selectedUserPhone || '').trim();
-
-            if (!selected) {
-                showToast('Selecciona un usuario');
-                return;
-            }
-
-            selectedUserPhone = selected;
-
-            try {
-                const data = await fetchJSON('/api/users/' + encodeURIComponent(selectedUserPhone) + '/config');
-                const s = data.settings;
-                const user = data.user || {};
-
-                document.getElementById('uRateMax').value = s.rateLimiting.maxMessagesPerWindow;
-                document.getElementById('uRateWindow').value = s.rateLimiting.windowSizeMs;
-                document.getElementById('uRateCooldown').value = s.rateLimiting.cooldownMs;
-
-                document.getElementById('uGemTemp').value = s.gemini.temperature;
-                document.getElementById('uGemTokens').value = s.gemini.maxOutputTokens;
-                document.getElementById('uGemTimeout').value = s.gemini.timeout;
-                document.getElementById('uGemFail').value = s.gemini.failureThreshold;
-                document.getElementById('uGemRecovery').value = s.gemini.recoveryTimeMs;
-
-                const meta = [
-                    'Usuario: ' + selectedUserPhone,
-                    'Nombre: ' + (user.userName || 'N/D'),
-                    'Recibidos: ' + (user.messagesReceived || 0),
-                    'Procesados: ' + (user.messagesProcessed || 0),
-                    'Fallidos: ' + (user.messagesFailed || 0),
-                    'Ultima actividad: ' + formatTs(user.lastSeenAt)
-                ].join(' | ');
-                document.getElementById('userMeta').textContent = meta;
-            } catch (err) {
-                showToast('No se pudo cargar configuracion del usuario');
-            }
-        }
-
-        async function saveUserSection(section) {
-            if (!selectedUserPhone) {
-                showToast('Selecciona un usuario primero');
-                return;
-            }
-
-            const data = section === 'rateLimiting'
-                ? {
-                    maxMessagesPerWindow: parseInt(document.getElementById('uRateMax').value),
-                    windowSizeMs: parseInt(document.getElementById('uRateWindow').value),
-                    cooldownMs: parseInt(document.getElementById('uRateCooldown').value)
-                }
-                : {
-                    temperature: parseFloat(document.getElementById('uGemTemp').value),
-                    maxOutputTokens: parseInt(document.getElementById('uGemTokens').value),
-                    timeout: Math.max(parseInt(document.getElementById('uGemTimeout').value), 18000),
-                    failureThreshold: parseInt(document.getElementById('uGemFail').value),
-                    recoveryTimeMs: parseInt(document.getElementById('uGemRecovery').value)
-                };
-
-            debugLog('Guardando configuracion de usuario', {
-                phone: selectedUserPhone,
-                section,
-                data
-            });
-
-            try {
-                const response = await fetchJSON('/api/users/' + encodeURIComponent(selectedUserPhone) + '/config', {
-                    method: 'PUT',
-                    body: JSON.stringify({ section, data })
-                });
-                debugLog('Configuracion guardada OK', response || {});
-                showToast('Configuracion guardada para ' + selectedUserPhone);
-                await loadSelectedUserConfig();
-            } catch (err) {
-                debugLog('Error guardando configuracion', {
-                    phone: selectedUserPhone,
-                    section,
-                    error: err.message || String(err)
-                }, 'error');
-                showToast('Error guardando: ' + (err.message || 'sin detalle'));
-            }
-        }
-
-        function renderKeys(keys) {
-            const body = document.getElementById('keysBody');
-            if (!Array.isArray(keys) || keys.length === 0) {
-                body.innerHTML = '<tr><td colspan="6">Sin keys configuradas</td></tr>';
-                return;
-            }
-
-            body.innerHTML = keys.map((k) => {
-                const activeBadge = k.active ? '<span class="badge ok">Activa</span>' : '<span class="badge bad">Inactiva</span>';
-                return `<tr>
-                <td>${k.label || ('Key #' + k.index)}</td>
-                <td>${activeBadge}</td>
-                <td>${k.totalCalls || 0}</td>
-                <td>${k.totalErrors || 0}</td>
-                <td>${k.lastError || '-'}</td>
-                <td>${formatTs(k.disabledUntil)}</td>
-            </tr>`;
-            }).join('');
-        }
-
-        function renderTopUsers(users) {
-            const list = document.getElementById('topUsersList');
-            if (!Array.isArray(users) || users.length === 0) {
-                list.innerHTML = '<div class="list-item"><p>Sin datos de usuarios aun.</p></div>';
-                return;
-            }
-
-            list.innerHTML = users.map((u) => `
-            <div class="list-item">
-                <h4>${u.phone}${u.userName ? ' - ' + u.userName : ''}</h4>
-                <p>Recibidos: ${u.messagesReceived} | Procesados: ${u.messagesProcessed} | Fallidos: ${u.messagesFailed}</p>
-                <p>Latencia media: ${u.avgLatencyMs || 0}ms | Ultima actividad: ${formatTs(u.lastSeenAt)}</p>
-            </div>
-        `).join('');
-        }
-
-        function renderRecentErrors(errors) {
-            const list = document.getElementById('recentErrorsList');
-            if (!Array.isArray(errors) || errors.length === 0) {
-                list.innerHTML = '<div class="list-item"><p>Sin errores recientes.</p></div>';
-                return;
-            }
-
-            list.innerHTML = errors.map((e) => {
-                const ctx = e.context ? JSON.stringify(e.context) : '{}';
-                return `
-                <div class="list-item">
-                    <h4>${e.component || 'unknown'} - ${formatTs(e.timestamp)}</h4>
-                    <p>${e.message || '-'}</p>
-                    <p>Contexto: ${ctx}</p>
-                </div>
-            `;
-            }).join('');
-        }
-
-        function formatCutoffReason(reason) {
-            const labels = {
-                NO_KEYS_CONFIGURED: 'No hay API keys configuradas',
-                NO_AVAILABLE_KEYS: 'Todas las keys quedaron deshabilitadas por circuit breaker',
-                TOTAL_BUDGET_EXHAUSTED: 'Se agotó el presupuesto total de tiempo',
-                RESPONSE_TRUNCATED_TIMEOUT: 'No se pudo generar respuesta completa a tiempo'
-            };
-            return labels[reason] || reason || 'Motivo no disponible';
-        }
-
-        function formatRootErrorCode(code) {
-            const labels = {
-                TOKEN_INVALID_OR_NO_PERMISSION: 'Token invalido/sin permisos',
-                QUOTA_EXHAUSTED: 'Cuota agotada',
-                RATE_LIMITED: 'Rate limit (429)',
-                CONTEXT_TOO_LARGE: 'Contexto/prompt muy grande',
-                SAFETY_BLOCKED: 'Bloqueo por seguridad/politicas',
-                TIMEOUT: 'Timeout de modelo',
-                MODEL_TEMPORARILY_UNAVAILABLE: 'Modelo no disponible temporalmente',
-                UNKNOWN_RUNTIME_ERROR: 'Error no clasificado',
-                NO_ATTEMPT_ERRORS: 'Sin errores de intento registrados'
-            };
-            return labels[code] || code || 'N/D';
-        }
-
-        function renderLastCutoff(cutoff) {
-            const box = document.getElementById('lastCutoffBox');
-            if (!cutoff || !cutoff.timestamp) {
-                box.innerHTML = '<div class="list-item"><p>Sin eventos de corte registrados.</p></div>';
-                return;
-            }
-
-            const details = cutoff.details || {};
-            const attemptErrors = Array.isArray(details.recentAttemptErrors) ? details.recentAttemptErrors : [];
-            const attemptsHtml = attemptErrors.length
-                ? '<div style="margin-top:8px;">' + attemptErrors.map((item) => `
-                <p><strong>Intento ${item.attempt || '-'} / Key ${item.keyIndex || '-'}</strong>: ${formatRootErrorCode(item.errorCode)}<br>${item.technicalMessage || '-'}</p>
-                <p>Timeout intento: ${item.attemptTimeoutMs ?? '-'}ms | Prompt conocimiento: ${item.knowledgeChars ?? '-'} chars</p>
-                <p>Historial: ${item.historyMessages ?? '-'} msgs (${item.historyChars ?? '-'} chars) | Mensaje usuario: ${item.userMessageChars ?? '-'} chars</p>
-            `).join('') + '</div>'
-                : '<p>Intentos con detalle: sin datos.</p>';
-
-            box.innerHTML = `
-            <div class="list-item">
-                <h4>${formatCutoffReason(cutoff.reason)} - ${formatTs(cutoff.timestamp)}</h4>
-                <p>Intentos: ${details.attempts ?? '-'} / ${details.maxAttempts ?? '-'}</p>
-                <p>Presupuesto: ${details.totalTimeoutMs ?? '-'}ms | Restante: ${details.remainingBudgetMs ?? '-'}ms</p>
-                <p>Causa raiz estimada: ${formatRootErrorCode(details.rootErrorCode)}.</p>
-                <p>Causa probable: ${details.rootProbableCause || 'No disponible'}.</p>
-                <p>Telefono: ${details.phone || 'N/D'}</p>
-                ${attemptsHtml}
-            </div>
-        `;
-
-            if (cutoff.timestamp !== lastCutoffLoggedAt) {
-                lastCutoffLoggedAt = cutoff.timestamp;
-                debugLog('Nuevo evento de corte detectado', {
-                    reason: cutoff.reason,
-                    rootErrorCode: details.rootErrorCode,
-                    rootProbableCause: details.rootProbableCause,
-                    attempts: details.attempts,
-                    maxAttempts: details.maxAttempts
-                }, 'warn');
-            }
-        }
-
-        function renderLastRequestDebug(reqDebug) {
-            if (!reqDebug || !reqDebug.requestId) return;
-            if (reqDebug.requestId === lastRequestDebugId) return;
-            lastRequestDebugId = reqDebug.requestId;
-
-            const attempts = Array.isArray(reqDebug.attempts) ? reqDebug.attempts : [];
-            debugLog('Gemini request trace', {
-                requestId: reqDebug.requestId,
-                status: reqDebug.status,
-                phone: reqDebug.phone || 'N/D',
-                userMessageChars: reqDebug.userMessageChars,
-                startedAt: reqDebug.startedAt,
-                finishedAt: reqDebug.finishedAt,
-                runtime: reqDebug.runtime || {}
-            }, reqDebug.status === 'FAILED' ? 'warn' : 'log');
-
-            attempts.forEach((a) => {
-                debugLog(`Gemini attempt #${a.attempt}`, {
-                    status: a.status,
-                    key: a.keyLabel || ('#' + (a.keyIndex || '?')),
-                    timeoutMs: a.timeoutMs,
-                    latencyMs: a.latencyMs || null,
-                    historyMessages: a.historyMessages,
-                    knowledgeChars: a.knowledgeChars,
-                    context: a.context || {},
-                    errorCode: a.errorCode || null,
-                    errorMessage: a.errorMessage || null
-                }, a.status === 'ERROR' ? 'warn' : 'log');
-            });
-
-            if (reqDebug.final) {
-                debugLog('Gemini request final', reqDebug.final, reqDebug.status === 'FAILED' ? 'warn' : 'log');
-            }
-        }
-
-        async function refreshMetrics() {
-            try {
-                const data = await fetchJSON('/health');
-                lastHealthPayload = data;
-
-                document.getElementById('statusDot').className = 'dot';
-                document.getElementById('statusText').textContent = 'Online - ' + data.uptime.human;
-
-                document.getElementById('sReceived').textContent = data.counters.messagesReceived;
-                document.getElementById('sProcessed').textContent = data.counters.messagesProcessed;
-                document.getElementById('sFailed').textContent = data.counters.messagesFailed;
-                document.getElementById('sLatency').textContent = data.latency.avg ? data.latency.avg + 'ms' : '-';
-                document.getElementById('sActive').textContent = data.services.bot.activeConversations;
-                document.getElementById('sUptime').textContent = data.uptime.human;
-
-                document.getElementById('mGemCalls').textContent = data.counters.geminiCalls;
-                document.getElementById('mGemErr').textContent = data.counters.geminiErrors;
-                document.getElementById('mWAOk').textContent = data.counters.whatsappMessagesSent;
-                document.getElementById('mWAErr').textContent = data.counters.whatsappErrors;
-                document.getElementById('mRateHit').textContent = data.counters.rateLimitHits;
-                document.getElementById('mDup').textContent = data.counters.duplicateMessages;
-                document.getElementById('mP50').textContent = data.latency.p50 ? data.latency.p50 + 'ms' : '-';
-                document.getElementById('mP95').textContent = data.latency.p95 ? data.latency.p95 + 'ms' : '-';
-                document.getElementById('mP99').textContent = data.latency.p99 ? data.latency.p99 + 'ms' : '-';
-                document.getElementById('mHeap').textContent = data.memory.heapUsed;
-                document.getElementById('mMpm').textContent = data.throughput.messagesPerMinute;
-                document.getElementById('mReliability').textContent = (data.reliability.successRate || 0) + '%';
-
-                renderKeys(data.services.gemini.keys || []);
-                renderLastCutoff(data.services.gemini.lastCutoff || null);
-                renderLastRequestDebug(data.services.gemini.lastRequestDebug || null);
-                renderTopUsers(data.insights.topUsers || []);
-                renderRecentErrors(data.insights.recentErrors || []);
-
-                const geminiRaw = document.getElementById('geminiRawPayload');
-                if (geminiRaw) {
-                    geminiRaw.textContent = JSON.stringify(data.services.gemini || {}, null, 2);
-                }
-
-                debugLog('Health actualizado', {
-                    uptime: data.uptime?.human,
-                    geminiCalls: data.counters?.geminiCalls,
-                    geminiErrors: data.counters?.geminiErrors,
-                    reliability: data.reliability?.successRate,
-                    lastGeminiStatus: data.services?.gemini?.lastRequestDebug?.status || 'N/D'
-                });
-            } catch (err) {
-                document.getElementById('statusDot').className = 'dot offline';
-                document.getElementById('statusText').textContent = 'Desconectado';
-                debugLog('refreshMetrics fallo', { error: err.message || String(err) }, 'error');
-            }
-        }
-
-        document.getElementById('userSelect').addEventListener('change', async (e) => {
-            selectedUserPhone = e.target.value;
-            await loadSelectedUserConfig();
-        });
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            debugLog('Panel cargado. Iniciando secuencia de bootstrap...');
-            updateAdminTokenStatus();
-            if (!ensureAdminToken()) {
-                showToast('Configura ADMIN_API_TOKEN para usar el panel de administracion');
-                debugLog('ADMIN_API_TOKEN no disponible en bootstrap', null, 'warn');
-            }
-            await loadGeneralConfig();
-            await loadUsers();
-            await refreshMetrics();
-            debugLog('Bootstrap completado. Actualizacion automatica activa.');
-            setInterval(refreshMetrics, 10000);
-            setInterval(loadUsers, 15000);
-        });
-    </script>
 </body>
-
 </html>

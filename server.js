@@ -13,6 +13,7 @@ const rateLimiter = require('./src/utils/rate_limiter');
 const messageQueue = require('./src/utils/message_queue');
 const mysqlService = require('./src/services/mysql_service');
 const userSettingsService = require('./src/services/user_settings_service');
+const buhoStoreScheduler = require('./src/services/buho_store_scheduler');
 
 // Inicializar la aplicación Express
 const app = express();
@@ -100,6 +101,8 @@ const server = app.listen(config.port, host, () => {
             await userSettingsService.initialize();
             await userSettingsService.persistGlobalConversation('server_bootstrap');
         }
+
+        buhoStoreScheduler.start();
     })().catch((error) => {
         logger.error(`[STARTUP] Error inicializando persistencia MySQL: ${error.message}`);
     });
@@ -126,6 +129,7 @@ function gracefulShutdown(signal) {
         logger.info('[SHUTDOWN] Servidor HTTP cerrado.');
 
         try {
+            buhoStoreScheduler.stop();
             await rateLimiter.destroy();
             await messageQueue.destroy();
             metrics.destroy();

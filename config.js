@@ -74,5 +74,11 @@ module.exports = {
 
     scraper: {
         schedule: process.env.SCRAPER_SCHEDULE || 'manual' // 'manual', 'daily', 'weekly'
+    },
+
+    buhoStoreScraper: {
+        enabled: process.env.BUHO_STORE_SCRAPER_ENABLED !== 'false',
+        cron: process.env.BUHO_STORE_SCRAPER_CRON || '0 3 * * *',
+        timezone: process.env.BUHO_STORE_SCRAPER_TZ || 'America/Lima'
     }
 };

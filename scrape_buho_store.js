@@ -1500,4 +1500,14 @@ async function main() {
     }
 }
 
-main().catch(err => console.error('Error fatal:', err));
+async function runBuhoStoreScrape() {
+    await main();
+}
+
+if (require.main === module) {
+    runBuhoStoreScrape().catch(err => console.error('Error fatal:', err));
+}
+
+module.exports = {
+    runBuhoStoreScrape
+};
