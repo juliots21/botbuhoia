@@ -409,70 +409,39 @@ async function saveUserSection(section) {
 }
 
 function renderKeys(keys) {
-    const body = document.getElementById('keysBody');
+    const body = document.getElementById('keysList');
     if(!body) return;
     
     if (!Array.isArray(keys) || keys.length === 0) {
-        body.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Sin keys configuradas</td></tr>';
+        body.innerHTML = '<div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">Sin keys configuradas</div>';
         return;
     }
 
     body.innerHTML = keys.map((k) => {
         const activeBadge = k.active 
-            ? '<span class="badge ok"><span class="pulse-dot-green"></span> Activa</span>' 
-            : '<span class="badge bad"><span class="pulse-dot-red"></span> Inactiva</span>';
-        return `<tr>
-        <td>${k.label || ('Key #' + k.index)}</td>
-        <td>${activeBadge}</td>
-        <td>${k.totalCalls || 0}</td>
-        <td>${k.totalErrors || 0}</td>
-        <td class="text-truncate" style="max-width: 150px;" title="${k.lastError || '-'}">${k.lastError || '-'}</td>
-        <td>${formatTs(k.disabledUntil)}</td>
-    </tr>`;
+            ? '<span class="color-ok">● Activa</span>' 
+            : '<span class="color-err">○ Inactiva</span>';
+        return `<div class="clean-list-item">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong>${k.label || ('Key #' + k.index)}</strong>
+                ${activeBadge}
+            </div>
+            <div style="display: flex; gap: 1.5rem; font-size: 0.75rem; margin-top: 6px;">
+                <span>Calls: ${k.totalCalls || 0}</span>
+                <span class="color-err">Errors: ${k.totalErrors || 0}</span>
+                <span>Disabled until: ${formatTs(k.disabledUntil)}</span>
+            </div>
+            <div style="font-size: 0.7rem; color: var(--on-surface-variant); margin-top: 4px;">${k.lastError || 'Sin errores'}</div>
+        </div>`;
     }).join('');
 }
 
 function renderTopUsers(users) {
-    const list = document.getElementById('topUsersList');
-    if(!list) return;
-    
-    if (!Array.isArray(users) || users.length === 0) {
-        list.innerHTML = '<div class="list-item empty"><p>Sin datos de usuarios aun.</p></div>';
-        return;
-    }
-
-    list.innerHTML = users.map((u, i) => `
-    <div class="list-item" style="animation-delay: ${i * 0.05}s">
-        <h4>${u.phone}${u.userName ? ' - ' + u.userName : ''}</h4>
-        <div class="stats-row">
-            <span>⬇️ ${u.messagesReceived}</span>
-            <span>⚙️ ${u.messagesProcessed}</span>
-            <span>❌ ${u.messagesFailed}</span>
-        </div>
-        <p class="text-muted text-sm mt-2">Latencia media: ${u.avgLatencyMs || 0}ms | Actividad: ${formatTs(u.lastSeenAt)}</p>
-    </div>
-`).join('');
+    // No-op if no target element
 }
 
 function renderRecentErrors(errors) {
-    const list = document.getElementById('recentErrorsList');
-    if(!list) return;
-
-    if (!Array.isArray(errors) || errors.length === 0) {
-        list.innerHTML = '<div class="list-item empty"><p>Sin errores recientes 🎉</p></div>';
-        return;
-    }
-
-    list.innerHTML = errors.map((e, i) => {
-        const ctx = e.context ? JSON.stringify(e.context) : '{}';
-        return `
-        <div class="list-item error-item" style="animation-delay: ${i * 0.05}s">
-            <h4 class="text-danger">${e.component || 'unknown'} <span class="text-muted float-right">${formatTs(e.timestamp)}</span></h4>
-            <p class="font-bold">${e.message || '-'}</p>
-            <p class="code-snippet mt-2">${ctx}</p>
-        </div>
-    `;
-    }).join('');
+    // No-op if no target element
 }
 
 function formatCutoffReason(reason) {
@@ -486,33 +455,102 @@ function formatCutoffReason(reason) {
 }
 
 function renderLastCutoff(cutoff) {
-    const box = document.getElementById('lastCutoffBox');
-    if(!box) return;
-
-    if (!cutoff || !cutoff.timestamp) {
-        box.innerHTML = '<div class="list-item empty"><p>Sin eventos de corte registrados.</p></div>';
-        return;
-    }
-
-    const details = cutoff.details || {};
-    box.innerHTML = `
-    <div class="list-item cutoff-item">
-        <h4 class="text-warning">${formatCutoffReason(cutoff.reason)} - ${formatTs(cutoff.timestamp)}</h4>
-        <div class="detail-grid mt-2" style="grid-template-columns: 1fr 1fr; gap: 8px;">
-            <div><strong class="text-muted">Intentos:</strong> ${details.attempts ?? '-'} / ${details.maxAttempts ?? '-'}</div>
-            <div><strong class="text-muted">Presupuesto:</strong> ${details.totalTimeoutMs ?? '-'}ms</div>
-            <div><strong class="text-muted">Causa Raíz:</strong> ${details.rootErrorCode || 'N/D'}</div>
-            <div><strong class="text-muted">Teléfono:</strong> ${details.phone || 'N/D'}</div>
-        </div>
-    </div>
-`;
+    // No-op if no target element
 }
 
 function renderLastRequestDebug(reqDebug) {
     if (!reqDebug || !reqDebug.requestId) return;
     if (reqDebug.requestId === lastRequestDebugId) return;
     lastRequestDebugId = reqDebug.requestId;
-    // Just logs it to debug, logic kept same as original
+}
+
+// =============================================
+// CHAT MIRROR: Live Intelligence Stream
+// =============================================
+let chatMirrorLastCount = 0;
+let chatMirrorTimer = null;
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatChatTime(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString('es-PE', { 
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        day: '2-digit', month: 'short'
+    });
+}
+
+async function loadChatMirror() {
+    if (!selectedUserPhone) return;
+
+    const stream = document.getElementById('chatStream');
+    const phoneLabel = document.getElementById('chatPhoneLabel');
+    if (!stream) return;
+
+    if (phoneLabel) phoneLabel.textContent = selectedUserPhone;
+
+    try {
+        const data = await fetchJSON('/api/chat/' + encodeURIComponent(selectedUserPhone) + '?limit=150');
+        const messages = data.messages || [];
+
+        if (messages.length === 0) {
+            stream.innerHTML = `
+                <div class="chat-empty-state">
+                    <span style="font-size: 2.5rem;">📭</span>
+                    <p>No hay mensajes registrados para <strong>${escapeHtml(selectedUserPhone)}</strong> aún.</p>
+                    <p style="font-size: 0.75rem;">Los mensajes aparecerán aquí cuando el usuario interactúe con el bot vía WhatsApp.</p>
+                </div>
+            `;
+            chatMirrorLastCount = 0;
+            return;
+        }
+
+        // Only re-render if count changed (performance optimization)
+        if (messages.length === chatMirrorLastCount) return;
+        chatMirrorLastCount = messages.length;
+
+        stream.innerHTML = messages.map((msg, i) => {
+            const dir = msg.direction === 'inbound' ? 'inbound' : 'outbound';
+            const senderLabel = dir === 'inbound' ? '👤 Usuario' : '🦉 Buho AI';
+            const time = formatChatTime(msg.created_at);
+            const latencyBadge = msg.latency_ms 
+                ? `<div class="bubble-latency">⚡ ${msg.latency_ms}ms</div>` 
+                : '';
+
+            return `<div class="chat-bubble ${dir}" style="animation-delay: ${Math.min(i * 0.03, 0.5)}s">
+                <div class="bubble-meta">
+                    <span class="bubble-sender">${senderLabel}</span>
+                    <span class="bubble-time">${time}</span>
+                </div>
+                <div class="bubble-body">${escapeHtml(msg.body || '')}</div>
+                ${latencyBadge}
+            </div>`;
+        }).join('');
+
+        // Auto-scroll to bottom
+        requestAnimationFrame(() => {
+            stream.scrollTop = stream.scrollHeight;
+        });
+
+    } catch (err) {
+        debugLog('Chat Mirror error', { error: err.message }, 'error');
+    }
+}
+
+function startChatMirrorPolling() {
+    if (chatMirrorTimer) clearInterval(chatMirrorTimer);
+    chatMirrorTimer = setInterval(() => {
+        const autoRefresh = document.getElementById('chatAutoRefresh');
+        if (autoRefresh && autoRefresh.checked && selectedUserPhone) {
+            loadChatMirror();
+        }
+    }, 8000);
 }
 
 async function refreshMetrics() {
@@ -576,7 +614,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (selectEl) {
         selectEl.addEventListener('change', async (e) => {
             selectedUserPhone = e.target.value;
+            chatMirrorLastCount = 0; // Force re-render on user change
             await loadSelectedUserConfig();
+            await loadChatMirror();
         });
     }
 
@@ -595,9 +635,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             loadUsers(),
             refreshMetrics()
         ]);
+        // Initial chat load after users are loaded
+        if (selectedUserPhone) {
+            await loadChatMirror();
+        }
     } catch(e) {}
     
     // Auto refreshes
     setInterval(refreshMetrics, 10000);
     setInterval(loadUsers, 15000);
+    startChatMirrorPolling();
 });
+

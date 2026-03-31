@@ -261,6 +261,33 @@
                     </div>
                 </div>
 
+
+                <!-- LIVE INTELLIGENCE STREAM (Chat Mirror) - Full Width -->
+                <div class="card span-12 delay-5" id="chatMirrorCard">
+                    <div class="card-header">
+                        <div>
+                            <h3>Live Intelligence Stream</h3>
+                            <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin-top: 4px;">
+                                Espejo de conversación WhatsApp ⟺ Gemini AI — Selección actual: <strong id="chatPhoneLabel" class="color-accent">Ninguno</strong>
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn-outline" style="font-size: 0.7rem; padding: 6px 12px;" onclick="loadChatMirror()">⟳ Refresh</button>
+                            <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--on-surface-variant);">
+                                <input type="checkbox" id="chatAutoRefresh" checked style="accent-color: var(--primary);" />
+                                Auto-poll
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="chat-stream" id="chatStream">
+                        <div class="chat-empty-state">
+                            <span style="font-size: 2.5rem;">🦉</span>
+                            <p>Selecciona un usuario para ver su historial de conversación en tiempo real.</p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </main>
         

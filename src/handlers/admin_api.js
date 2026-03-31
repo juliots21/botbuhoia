@@ -183,4 +183,76 @@ router.put('/users/:phone/config', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/chat/:phone — Devuelve historial de mensajes para el Chat Mirror
+ * Extrae los últimos N mensajes de conversation_messages (MySQL)
+ */
+router.get('/chat/:phone', async (req, res) => {
+    try {
+        const mysqlService = require('../services/mysql_service');
+        const phone = String(req.params.phone || '').trim();
+        const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+
+        if (!phone) {
+            return res.status(400).json({ error: 'Número inválido' });
+        }
+
+        if (!mysqlService.isConfigured()) {
+            return res.json({ messages: [], source: 'mysql_not_configured' });
+        }
+
+        const rows = await mysqlService.query(
+            `SELECT
+                cm.id,
+                cm.direction,
+                cm.source,
+                cm.body,
+                cm.latency_ms,
+                cm.created_at
+             FROM conversation_messages cm
+             INNER JOIN conversation_sessions cs ON cm.session_id = cs.id
+             INNER JOIN users u ON cs.user_id = u.id
+             WHERE u.phone = ?
+             ORDER BY cm.created_at DESC
+             LIMIT ?`,
+            [phone, limit]
+        );
+
+        // Reverse so oldest first for chat display
+        res.json({ messages: rows.reverse(), phone });
+
+    } catch (error) {
+        logger.error(`[ADMIN API] Error obteniendo chat de ${req.params.phone}: ${error.message}`);
+        res.status(500).json({ error: 'Error obteniendo historial de chat' });
+    }
+});
+
+/**
+ * GET /api/chat/:phone/count — Devuelve solo el conteo de mensajes (polling liviano)
+ */
+router.get('/chat/:phone/count', async (req, res) => {
+    try {
+        const mysqlService = require('../services/mysql_service');
+        const phone = String(req.params.phone || '').trim();
+
+        if (!phone || !mysqlService.isConfigured()) {
+            return res.json({ count: 0 });
+        }
+
+        const rows = await mysqlService.query(
+            `SELECT COUNT(*) AS total
+             FROM conversation_messages cm
+             INNER JOIN conversation_sessions cs ON cm.session_id = cs.id
+             INNER JOIN users u ON cs.user_id = u.id
+             WHERE u.phone = ?`,
+            [phone]
+        );
+
+        res.json({ count: rows[0]?.total || 0 });
+
+    } catch (error) {
+        res.json({ count: 0 });
+    }
+});
+
 module.exports = router;

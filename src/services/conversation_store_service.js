@@ -188,6 +188,53 @@ class ConversationStoreService {
 
         await this._flush();
     }
+
+    // ==========================================
+    // MODULE: MYSQL AUDIT & CHAT MIRROR (NOCTURNAL)
+    // ==========================================
+    async appendAuditMessage(phone, direction, source, body, messageId = null, latencyMs = null) {
+        const mysqlService = require('./mysql_service');
+        if (!mysqlService.isConfigured()) return;
+
+        try {
+            // 1. Resolve User ID
+            const users = await mysqlService.query('SELECT id FROM users WHERE phone = ? LIMIT 1', [phone]);
+            if (users.length === 0) return; // User not yet persisted by userSettingsService
+            const userId = users[0].id;
+
+            // 2. Ensure Active Session
+            let sessionId;
+            const sessions = await mysqlService.query(
+                `SELECT id FROM conversation_sessions WHERE user_id = ? AND status = 'active' ORDER BY last_activity_at DESC LIMIT 1`,
+                [userId]
+            );
+
+            if (sessions.length > 0) {
+                sessionId = sessions[0].id;
+                // Update last activity
+                await mysqlService.execute(`UPDATE conversation_sessions SET last_activity_at = NOW(), total_messages = total_messages + 1 WHERE id = ?`, [sessionId]);
+            } else {
+                // Create new session
+                const sessionKey = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                const result = await mysqlService.execute(
+                    `INSERT INTO conversation_sessions (user_id, session_key, started_at, last_activity_at, total_messages, status)
+                     VALUES (?, ?, NOW(), NOW(), 1, 'active')`,
+                    [userId, sessionKey]
+                );
+                sessionId = result.insertId;
+            }
+
+            // 3. Insert Message
+            await mysqlService.execute(
+                `INSERT INTO conversation_messages (session_id, direction, source, message_id, message_type, body, latency_ms, created_at)
+                 VALUES (?, ?, ?, ?, 'text', ?, ?, NOW())`,
+                [sessionId, direction, source, messageId, body, latencyMs || null]
+            );
+
+        } catch (error) {
+            logger.error(`[CONV_STORE] Error insertando auditoria MySQL para ${phone}: ${error.message}`);
+        }
+    }
 }
 
 module.exports = new ConversationStoreService();

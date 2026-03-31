@@ -146,6 +146,10 @@ class BotHandler {
             // Marcar lectura temprano para confirmar recepcion al usuario.
             await whatsappService.markAsRead(messageId);
 
+            // Log de entrada para el Chat Mirror (MySQL)
+            conversationStoreService.appendAuditMessage(userPhone, 'inbound', 'user', messageText, messageId)
+                .catch(err => logger.error(`[BOT] Error logging inbound to MySQL: ${err.message}`));
+
             // Extraer historial del usuario para contexto
             const history = await this._getOrCreateConversation(userPhone);
 
@@ -193,6 +197,11 @@ class BotHandler {
             metrics.increment('messagesProcessed');
             metrics.trackUserProcessed(userPhone, latency, userName);
             userSettingsService.markMessageProcessed(userPhone, latency);
+
+            // Log de salida para el Chat Mirror (MySQL)
+            conversationStoreService.appendAuditMessage(userPhone, 'outbound', 'bot', responseText, null, latency)
+                .catch(err => logger.error(`[BOT] Error logging outbound to MySQL: ${err.message}`));
+
             logger.info(`[BOT] ✓ Flujo completado para ${userPhone} en ${latency}ms`);
 
         } catch (error) {
