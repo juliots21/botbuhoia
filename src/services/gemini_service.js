@@ -219,7 +219,7 @@ class GeminiService {
 
     _looksTruncatedReply(text = '') {
         const out = String(text || '').trim();
-        if (out.length < 90) return false;
+        if (out.length < 55) return false;
 
         // Si cierra con puntuación fuerte, asumimos mensaje completo.
         if (/[.!?…)]$/.test(out)) return false;
@@ -236,7 +236,12 @@ class GeminiService {
 
         const lastLine = out.split(/\r?\n/).filter(Boolean).pop() || out;
         const lastWords = lastLine.toLowerCase().trim();
-        if (/(\bde\b|\bdel\b|\bla\b|\blas\b|\bel\b|\blos\b|\by\b|\bo\b|\bque\b|\bpara\b|\bcon\b|\bpor\b|\ben\b|\ba\b|\bal\b|\bun\b|\buna\b|\balguna\b|\balgun\b|\balgún\b)$/.test(lastWords)) {
+        if (/(\bde\b|\bdel\b|\bla\b|\blas\b|\bel\b|\blos\b|\by\b|\bo\b|\bque\b|\bpara\b|\bcon\b|\bpor\b|\ben\b|\ba\b|\bal\b|\bun\b|\buna\b|\balguna\b|\balgun\b|\balgún\b|\bnuestro\b|\bnuestra\b|\bnuestros\b|\bnuestras\b|\bestro\b|\best\b)$/.test(lastWords)) {
+            return true;
+        }
+
+        // Si el mensaje queda sin cierre y parece una introduccion abierta, suele estar cortado.
+        if (out.length >= 70 && !/[.!?…)]$/.test(out) && /\b(ahora\s+si|te\s+cuento|vamos\s+con|informacion\s+sobre|nuestro\s+sistema)\b/i.test(out)) {
             return true;
         }
 
