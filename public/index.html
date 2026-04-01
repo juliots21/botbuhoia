@@ -4,39 +4,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digital Buho | Nocturnal AI</title>
+    <title>Digital Buho | Buho AI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script src="script.js" defer></script>
 </head>
 
 <body>
-    
+
     <div class="layout-wrapper" id="appRoot">
 
         <!-- LEYENDA IZQUIERDA: SIDEBAR -->
         <aside class="sidebar slide-in-left">
             <div class="brand-area">
-                <div class="brand-title">NOCTURNAL <span>AI</span></div>
+                <div class="brand-title">Buho Digital <span>AI</span></div>
             </div>
 
             <nav class="side-menu">
-                <a href="#" class="active">
-                    <span class="menu-icon">◱</span> Dashboard
+                <a href="#dashboard" class="nav-item active">
+                    <span class="menu-icon material-symbols-outlined" style="font-size: 1.1rem;">dashboard</span>
+                    Dashboard
                 </a>
-                <a href="#">
-                    <span class="menu-icon">⚡</span> Intelligence
+                <a href="#chat" class="nav-item">
+                    <span class="menu-icon material-symbols-outlined" style="font-size: 1.1rem;">chat</span> Chats
                 </a>
-                <a href="#">
-                    <span class="menu-icon">∞</span> Nexus Protocol
+                <a href="#" class="nav-item">
+                    <span class="menu-icon material-symbols-outlined" style="font-size: 1.1rem;">hub</span> Protocolo
+                    Nexus
                 </a>
-                <a href="#">
-                    <span class="menu-icon">🛡</span> Security
+                <a href="#" class="nav-item">
+                    <span class="menu-icon material-symbols-outlined" style="font-size: 1.1rem;">security</span>
+                    Seguridad
                 </a>
-                <a href="#">
-                    <span class="menu-icon">🗄</span> Archives
+                <a href="#" class="nav-item">
+                    <span class="menu-icon material-symbols-outlined" style="font-size: 1.1rem;">folder_open</span>
+                    Archivos
                 </a>
             </nav>
 
@@ -48,7 +54,8 @@
                 <!-- Massive Deploy Button matching the screenshot -->
                 <button class="btn-deploy" onclick="saveAdminToken()">AUTENTICAR NÚCLEO</button>
                 <div class="auth-meta">
-                    <span class="pulse-dot-green" id="statusDot" style="width: 8px; height: 8px; border-radius: 50%; display:inline-block; margin-right:6px; background: currentColor;"></span>
+                    <span class="pulse-dot-green" id="statusDot"
+                        style="width: 8px; height: 8px; border-radius: 50%; display:inline-block; margin-right:6px; background: currentColor;"></span>
                     <span id="statusText">Buscando conexión...</span>
                 </div>
             </div>
@@ -56,243 +63,415 @@
 
         <!-- ESPACIO PRINCIPAL: MAIN CONTENT -->
         <main class="main-content fade-in-up">
-            
+
             <!-- TOPBAR -->
             <header class="top-nav">
-                <div class="breadcrumbs">
-                    <span class="muted">Digital Buho</span> <span class="sep">/</span> <span class="active">Panel de Control</span>
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div class="breadcrumbs" id="topBreadcrumb">
+                        <span class="muted">Digital Buho</span> <span class="sep">/</span> <span class="active">Panel de
+                            Control</span>
+                    </div>
                 </div>
                 <div class="auth-bar">
-                    <div id="adminTokenStatus" style="font-size: 0.65rem; color: var(--on-surface-variant); display: none;"></div>
-                    <input id="adminTokenInput" type="password" placeholder="ADMIN_TOKEN / API_KEY" autocomplete="off" />
+                    <div id="adminTokenStatus"
+                        style="font-size: 0.65rem; color: var(--on-surface-variant); display: none;"></div>
+                    <input id="adminTokenInput" type="password" placeholder="ADMIN_TOKEN / API_KEY"
+                        autocomplete="off" />
+                    <button class="btn-outline" style="padding: 6px 12px; font-size: 0.75rem;"
+                        onclick="saveAdminToken()">Guardar</button>
+                    <button class="btn-outline" id="debugToggleBtn" style="padding: 6px 12px; font-size: 0.75rem;"
+                        onclick="toggleDebugConsole()">Debug ON</button>
                 </div>
             </header>
 
-            <!-- GRID PRINCIPAL -->
-            <div class="dashboard-grid">
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="dashboard-view active-view">
+                <!-- GRID PRINCIPAL -->
+                <div class="dashboard-grid">
 
-                <!-- HERO CARD (Top Left, massive) -->
-                <div class="card hero-card span-8 delay-1">
-                    <div class="card-pulse">
-                        <span class="pulse-dot-primary"></span>
-                        SYSTEM PULSE ACTIVE
-                    </div>
-                    
-                    <h1 class="hero-title">Digital Buho Core</h1>
-                    <p class="hero-desc">
-                        Neural throughput is currently optimizing traffic. All autonomous nodes and Gemini integration reporting health status across cloud clusters. Confiabilidad AI: <strong id="mReliability" class="color-ok">-</strong>
-                    </p>
+                    <!-- HERO CARD (Top Left, massive) -->
+                    <div class="card hero-card span-8 delay-1 masonry">
+                        <div class="card-pulse">
+                            <span class="pulse-dot-primary"></span>
+                            SYSTEM PULSE ACTIVE
+                        </div>
 
-                    <div class="hero-stats">
-                        <div class="stat-block">
-                            <span class="label">ACTIVE FLOWS (SESIONES)</span>
-                            <strong class="value" id="sActive">-</strong>
-                        </div>
-                        <div class="stat-line"></div>
-                        <div class="stat-block">
-                            <span class="label">NEURAL LOAD (MpM)</span>
-                            <strong class="value" id="mMpm">-</strong>
-                        </div>
-                        <div class="stat-line"></div>
-                        <div class="stat-block">
-                            <span class="label">LATENCIA P50</span>
-                            <strong class="value" id="mP50">-</strong>
-                        </div>
-                    </div>
-                </div>
+                        <h1 class="hero-title">Digital Buho Core</h1>
+                        <p class="hero-desc">
+                            El rendimiento neural está optimizando el tráfico actualmente. Todos los nodos autónomos y
+                            la
+                            integración Gemini reportan estado de salud en los clusters de la nube. Confiabilidad AI:
+                            <strong id="mReliability" class="color-ok">-</strong>
+                        </p>
 
-                <!-- RIGHT STACKED CARDS (Top Right) -->
-                <div class="kpi-stack span-4 delay-2">
-                    <div class="card mini-banner">
-                        <div>
-                            <span class="label">TOTAL MESSAGES RECIBIDOS</span>
-                            <strong class="big-val" id="sReceived">-</strong>
+                        <div class="hero-stats">
+                            <div class="stat-block">
+                                <span class="label">FLUJOS ACTIVOS (SESIONES)</span>
+                                <strong class="value" id="sActive">-</strong>
+                            </div>
+                            <div class="stat-line"></div>
+                            <div class="stat-block">
+                                <span class="label">CARGA NEURAL (MpM)</span>
+                                <strong class="value" id="mMpm">-</strong>
+                            </div>
+                            <div class="stat-line"></div>
+                            <div class="stat-block">
+                                <span class="label">LATENCIA P50</span>
+                                <strong class="value" id="mP50">-</strong>
+                            </div>
                         </div>
-                        <div class="trend positive">▲ ACTIVO</div>
-                    </div>
-                    
-                    <div class="card mini-banner">
-                        <div>
-                            <span class="label">MESSAGES PROCESADOS OK</span>
-                            <strong class="big-val color-ok" id="sProcessed">-</strong>
-                        </div>
-                        <div class="trend">100%</div>
                     </div>
 
-                    <div class="card mini-banner">
-                        <div>
-                            <span class="label">RECHAZADOS / ERRORES</span>
-                            <strong class="big-val color-err" id="sFailed">-</strong>
+                    <!-- RIGHT STACKED CARDS (Top Right) -->
+                    <div class="kpi-stack span-4 delay-2">
+                        <div class="card mini-banner">
+                            <div>
+                                <span class="label">TOTAL MENSAJES RECIBIDOS</span>
+                                <strong class="big-val" id="sReceived">-</strong>
+                            </div>
+                            <div class="trend positive">▲ ACTIVO</div>
                         </div>
-                        <div class="trend negative">Alertas</div>
-                    </div>
-                </div>
 
-                <!-- MIDDLE LEFT: SYSTEM TRAFFIC -->
-                <div class="card system-traffic span-8 delay-3">
-                    <div class="card-header">
-                        <h3>System Traffic & Telemetry</h3>
-                        <div class="traffic-filters">
-                            <span class="filter">24H</span>
-                            <span class="filter active">7D</span>
-                            <span class="filter">30D</span>
+                        <div class="card mini-banner">
+                            <div>
+                                <span class="label">MESSAGES PROCESADOS OK</span>
+                                <strong class="big-val color-ok" id="sProcessed">-</strong>
+                            </div>
+                            <div class="trend">100%</div>
                         </div>
-                    </div>
-                    
-                    <!-- Reusando la grilla de métricas pequeñas aquí adentro -->
-                    <div class="metrics-grid">
-                        <div class="micro-stat">
-                            <span class="label">MEMORIA HEAP</span>
-                            <strong class="value" id="mHeap">-</strong>
+
+                        <div class="card mini-banner">
+                            <div>
+                                <span class="label">RECHAZADOS / ERRORES</span>
+                                <strong class="big-val color-err" id="sFailed">-</strong>
+                            </div>
+                            <div class="trend negative">Alertas</div>
                         </div>
-                        <div class="micro-stat">
-                            <span class="label">LATENCIA P99</span>
-                            <strong class="value" id="mP99">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">DUPLICADOS RED</span>
-                            <strong class="value" id="mDup">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">SPAM BLOCK HITS</span>
-                            <strong class="value color-warn" id="mRateHit">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">WHATSAPP ENVIADOS</span>
-                            <strong class="value" id="mWAOk">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">WHATSAPP ERRORES</span>
-                            <strong class="value color-err" id="mWAErr">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">GEMINI LLAMADAS OK</span>
-                            <strong class="value" id="mGemCalls">-</strong>
-                        </div>
-                        <div class="micro-stat">
-                            <span class="label">GEMINI ERRORES</span>
-                            <strong class="value color-err" id="mGemErr">-</strong>
-                        </div>
-                        <div class="micro-stat" style="display:none;" id="sLatency">-</div>
-                        <div class="micro-stat" style="display:none;" id="mP95">-</div>
                     </div>
 
-                    <!-- Botones de Debug ocultos y Global Settings dentro del tráfico -->
-                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ghost-border);">
-                        <h4 class="kpi-title" style="margin-bottom: 1rem;">Comportamiento Retentivo (Memoria de Corto Plazo)</h4>
-                        <div class="inline-form">
+                    <!-- MIDDLE LEFT: SYSTEM TRAFFIC -->
+                    <div class="card system-traffic span-8 delay-3">
+                        <div class="card-header">
+                            <h3>System Traffic & Telemetry</h3>
+                            <div class="traffic-filters">
+                                <span class="filter">24H</span>
+                                <span class="filter active">7D</span>
+                                <span class="filter">30D</span>
+                            </div>
+                        </div>
+
+                        <!-- Reusando la grilla de métricas pequeñas aquí adentro -->
+                        <div class="metrics-grid">
+                            <div class="micro-stat">
+                                <span class="label">MEMORIA HEAP</span>
+                                <strong class="value" id="mHeap">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">LATENCIA P99</span>
+                                <strong class="value" id="mP99">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">DUPLICADOS RED</span>
+                                <strong class="value" id="mDup">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">BLOQUEOS DE SPAM</span>
+                                <strong class="value color-warn" id="mRateHit">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">WHATSAPP ENVIADOS</span>
+                                <strong class="value" id="mWAOk">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">WHATSAPP ERRORES</span>
+                                <strong class="value color-err" id="mWAErr">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">GEMINI LLAMADAS OK</span>
+                                <strong class="value" id="mGemCalls">-</strong>
+                            </div>
+                            <div class="micro-stat">
+                                <span class="label">GEMINI ERRORES</span>
+                                <strong class="value color-err" id="mGemErr">-</strong>
+                            </div>
+                            <div class="micro-stat" style="display:none;" id="sLatency">-</div>
+                            <div class="micro-stat" style="display:none;" id="mP95">-</div>
+                        </div>
+
+                        <!-- Botones de Debug ocultos y Global Settings dentro del tráfico -->
+                        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--ghost-border);">
+                            <h4 class="kpi-title" style="margin-bottom: 1rem;">Comportamiento Retentivo (Memoria de
+                                Corto Plazo)</h4>
+                            <div class="inline-form">
+                                <div class="form-group">
+                                    <label>Límite max historial</label>
+                                    <input id="gConvoMaxHistory" type="number" />
+                                </div>
+                                <div class="form-group">
+                                    <label>Timeout memoria (ms)</label>
+                                    <input id="gConvoTimeout" type="number" />
+                                </div>
+                                <button class="btn-outline" style="align-self: flex-end;"
+                                    onclick="saveGlobalConversation()">Aplicar Contexto Global</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT TALL BOX (Bot Configuration) -->
+                    <div class="card config-card span-4 row-span-2 delay-4">
+                        <div class="card-header">
+                            <h3>Configuración del Bot</h3>
+                        </div>
+
+                        <div class="minimal-form">
+                            <!-- User Context injected here -->
                             <div class="form-group">
-                                <label>Límite max historial</label>
-                                <input id="gConvoMaxHistory" type="number" />
+                                <label>IDENTIDAD OBJETIVO (INYECTAR TELÉFONO)</label>
+                                <input id="manualPhone" placeholder="Ej: 51986079838" />
+                                <div style="margin-top: 6px;">
+                                    <button class="btn-outline" style="width: 100%; font-size: 0.75rem;"
+                                        onclick="selectManualPhone()">Cargar Nodo</button>
+                                </div>
                             </div>
+
                             <div class="form-group">
-                                <label>Timeout memoria (ms)</label>
-                                <input id="gConvoTimeout" type="number" />
+                                <label>ENTIDADES ACTIVAS (CUENTAS DE USUARIO)</label>
+                                <select id="userSelect"></select>
+                                <div id="userMeta"
+                                    style="font-size: 0.7rem; color: var(--on-surface-variant); padding-top: 4px;">
+                                    Esperando selección...</div>
                             </div>
-                            <button class="btn-outline" style="align-self: flex-end;" onclick="saveGlobalConversation()">Aplicar Contexto Global</button>
+
+                            <!-- Antimafia Rate limit -->
+                            <div
+                                style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1rem;">
+                                <label class="kpi-title color-accent"
+                                    style="margin-bottom: 10px; display:block;">PROTOCOLO: LÍMITE ANTIMAFIA</label>
+                                <div class="grid-2-cols">
+                                    <div class="form-group"><label>Límite Msgs</label><input id="uRateMax"
+                                            type="number" /></div>
+                                    <div class="form-group"><label>Ventana (ms)</label><input id="uRateWindow"
+                                            type="number" /></div>
+                                    <div class="form-group col-span-2"><label>Cooldown (ms)</label><input
+                                            id="uRateCooldown" type="number" /></div>
+                                </div>
+                                <button class="btn-outline" style="width:100%; margin-top: 1rem;"
+                                    onclick="saveUserSection('rateLimiting')">UPDATE CONTROL PROTOCOL</button>
+                            </div>
+
+                            <!-- Gemini per user -->
+                            <div
+                                style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1.5rem;">
+                                <label class="kpi-title color-accent"
+                                    style="margin-bottom: 10px; display:block;">PROTOCOLO: PERSONA GEMINI AI</label>
+                                <div class="grid-2-cols">
+                                    <div class="form-group"><label>Creatividad (Temp)</label><input id="uGemTemp"
+                                            type="number" step="0.1" /></div>
+                                    <div class="form-group"><label>Max Tokens</label><input id="uGemTokens"
+                                            type="number" /></div>
+                                    <div class="form-group"><label>Hard Timeout</label><input id="uGemTimeout"
+                                            type="number" /></div>
+                                    <div class="form-group"><label>Max Fallos</label><input id="uGemFail"
+                                            type="number" /></div>
+                                    <div class="form-group col-span-2"><label>Tiempo Recuperación</label><input
+                                            id="uGemRecovery" type="number" /></div>
+                                </div>
+                                <button class="btn-primary" style="width:100%; border-radius: 8px; margin-top: 1rem;"
+                                    onclick="saveUserSection('gemini')">APLICAR Y SOBRESCRIBIR PERSONA</button>
+                            </div>
+
                         </div>
                     </div>
-                </div>
 
-                <!-- RIGHT TALL BOX (Bot Configuration) -->
-                <div class="card config-card span-4 row-span-2 delay-4">
-                    <div class="card-header">
-                        <h3>Bot Configuration</h3>
-                    </div>
-
-                    <div class="minimal-form">
-                        <!-- User Context injected here -->
-                        <div class="form-group">
-                            <label>TARGET IDENTITY (INJECT PHONE)</label>
-                            <input id="manualPhone" placeholder="Ej: 51986079838" />
-                            <div style="margin-top: 6px;">
-                                <button class="btn-outline" style="width: 100%; font-size: 0.75rem;" onclick="selectManualPhone()">Cargar Nodo</button>
+                    <!-- API KEYS & RAW COMMANDS (Bottom Span 8) -->
+                    <div class="card span-8 delay-5" style="margin-bottom: 2rem;">
+                        <div class="card-header" style="justify-content: space-between;">
+                            <h3>Pool de Llaves AI (Circuit Breakers)</h3>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;"
+                                    onclick="openSecuredEndpoint('/api/config')">Ver /api/config</button>
+                                <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;"
+                                    onclick="openSecuredEndpoint('/api/users')">Ver /api/users</button>
+                                <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;"
+                                    onclick="openSecuredEndpoint('/health')">Ver /health</button>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label>ACTIVE ENTITIES (USER ACCOUNTS)</label>
-                            <select id="userSelect"></select>
-                            <div id="userMeta" style="font-size: 0.7rem; color: var(--on-surface-variant); padding-top: 4px;">Esperando selección...</div>
-                        </div>
-
-                        <!-- Antimafia Rate limit -->
-                        <div style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1rem;">
-                            <label class="kpi-title color-accent" style="margin-bottom: 10px; display:block;">PROTOCOL: ANTIMAFIA RATE LIMIT</label>
-                            <div class="grid-2-cols">
-                                <div class="form-group"><label>Límite Msgs</label><input id="uRateMax" type="number" /></div>
-                                <div class="form-group"><label>Ventana (ms)</label><input id="uRateWindow" type="number" /></div>
-                                <div class="form-group col-span-2"><label>Cooldown (ms)</label><input id="uRateCooldown" type="number" /></div>
+                        <div class="clean-list" id="keysList">
+                            <div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">
+                                Cargando pool de llaves...
                             </div>
-                            <button class="btn-outline" style="width:100%; margin-top: 1rem;" onclick="saveUserSection('rateLimiting')">UPDATE CONTROL PROTOCOL</button>
                         </div>
+                    </div>
+                </div> <!-- End Dashboard Grid -->
+            </div> <!-- End VIEW DASHBOARD -->
 
-                        <!-- Gemini per user -->
-                        <div style="padding-top: 1.5rem; border-top: 1px solid var(--ghost-border); margin-top: 1.5rem;">
-                            <label class="kpi-title color-accent" style="margin-bottom: 10px; display:block;">PROTOCOL: GEMINI AI PERSONA</label>
-                            <div class="grid-2-cols">
-                                <div class="form-group"><label>Creativity (Temp)</label><input id="uGemTemp" type="number" step="0.1" /></div>
-                                <div class="form-group"><label>Max Tokens</label><input id="uGemTokens" type="number" /></div>
-                                <div class="form-group"><label>Hard Timeout</label><input id="uGemTimeout" type="number" /></div>
-                                <div class="form-group"><label>Max Fallos</label><input id="uGemFail" type="number" /></div>
-                                <div class="form-group col-span-2"><label>Tiempo Recuperación</label><input id="uGemRecovery" type="number" /></div>
+            <!-- VIEW: CHAT -->
+            <div id="view-chat" class="chat-view" style="display: none;">
+                <div class="chat-layout fade-in-up">
+
+                    <!-- SIDEBAR: Users -->
+                    <div class="chat-sidebar">
+                        <div class="chat-sidebar-header">
+                            <h4>Live Threads</h4>
+                            <div class="chat-search-box">
+                                <span class="material-symbols-outlined"
+                                    style="opacity: 0.5; font-size: 16px;">search</span>
+                                <input type="text" placeholder="Buscar Nodo..." />
                             </div>
-                            <button class="btn-primary" style="width:100%; border-radius: 8px; margin-top: 1rem;" onclick="saveUserSection('gemini')">DEFLATE & OVERRIDE PERSONA</button>
+                        </div>
+                        <div class="chat-user-list" id="chatUserList">
+                            <!-- Users injected here dynamically by script.js -->
+                            <div class="chat-empty-state" style="font-size: 0.75rem; padding: 2rem 1rem;">
+                                Esperando usuarios...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MAIN CHAT WINDOW -->
+                    <div class="chat-main">
+                        <div class="chat-main-header">
+                            <div class="chat-main-header-info">
+                                <button class="mobile-back-btn" onclick="backToThreadList()">
+                                    <span class="material-symbols-outlined">arrow_back</span>
+                                </button>
+                                <div class="chat-main-avatar">
+                                    <span class="material-symbols-outlined"
+                                        style="color:var(--primary); font-size:18px;">smart_toy</span>
+                                </div>
+                                <div>
+                                    <div class="chat-main-title" id="chatPhoneLabel">Selecciona un chat</div>
+                                    <div class="chat-main-subtitle" id="chatUserNameLabel">...</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 12px; align-items: center;" class="chat-header-actions">
+                                <label
+                                    style="font-size: 0.7rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--on-surface-variant);">
+                                    <input type="checkbox" id="chatAutoRefresh" checked
+                                        style="accent-color: var(--primary);" />
+                                    Auto-sondeo
+                                </label>
+                                <button class="btn-outline" style="font-size: 0.75rem;" onclick="loadChatMirror()">
+                                    <span class="material-symbols-outlined"
+                                        style="font-size:14px; vertical-align:middle;">refresh</span> Actualizar
+                                </button>
+                            </div>
                         </div>
 
+                        <div class="chat-stream" id="chatStream">
+                            <div class="chat-empty-state">
+                                <span class="material-symbols-outlined"
+                                    style="font-size: 3rem; margin-bottom: 1rem; color: var(--on-surface-variant);">mark_chat_unread</span>
+                                <p>No hay mensajes seleccionados.</p>
+                            </div>
+                        </div>
+
+                        <div class="chat-input-area">
+                            <div class="chat-input-box">
+                                <span class="material-symbols-outlined"
+                                    style="color: var(--on-surface-variant); cursor: pointer; font-size: 20px;">add</span>
+                                <input type="text" placeholder="Anula la AI y escribe un mensaje..." disabled />
+                                <button class="chat-btn-send" disabled>
+                                    <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- RTB SIDEBAR: Aether Onyx Data Grid -->
+                    <div class="chat-sidebar chat-sidebar-right aether-onyx-sidebar">
+                        <div class="sidebar-top-branding">
+                            <span class="material-symbols-outlined"
+                                style="color: var(--primary); font-size: 18px;">radar</span>
+                            TARGET ANALYTICS
+                        </div>
+
+                        <div class="aether-timeline-container">
+                            <!-- Timeline node 1 -->
+                            <div class="timeline-node">
+                                <div class="node-icon"><span class="material-symbols-outlined">smartphone</span></div>
+                                <div class="node-content">
+                                    <span class="aether-label">TELÉFONO ENTIDAD</span>
+                                    <strong class="aether-value" id="rtbPhone">-</strong>
+                                </div>
+                            </div>
+
+                            <!-- Timeline node 2 -->
+                            <div class="timeline-node">
+                                <div class="node-icon"><span class="material-symbols-outlined">person</span></div>
+                                <div class="node-content">
+                                    <span class="aether-label">IDENTIDAD</span>
+                                    <strong class="aether-value" id="rtbName" style="color: var(--primary);">-</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-divider"></div>
+
+                            <!-- Grid Data -->
+                            <div class="aether-data-grid">
+                                <div class="grid-item">
+                                    <span class="grid-label">PROCESADOS</span>
+                                    <strong class="grid-value color-ok" id="rtbProcessed">-</strong>
+                                </div>
+                                <div class="grid-item">
+                                    <span class="grid-label">RECIBIDOS</span>
+                                    <strong class="grid-value" style="color: #fffbfe;" id="rtbReceived">-</strong>
+                                </div>
+                                <div class="grid-item" style="grid-column: span 2;">
+                                    <span class="grid-label" style="color:#fb9a99;">ERRORES DE PROTOCOLO</span>
+                                    <strong class="grid-value" id="rtbFailed"
+                                        style="color:#f43f5e; font-size: 1.25rem;">-</strong>
+                                </div>
+                            </div>
+
+                            <div class="timeline-divider"></div>
+
+                            <!-- Timeline node 3 -->
+                            <div class="timeline-node" style="margin-top: 0.5rem;">
+                                <div class="node-icon"><span class="material-symbols-outlined">schedule</span></div>
+                                <div class="node-content">
+                                    <span class="aether-label">ÚLTIMA VEZ VISTO</span>
+                                    <strong class="aether-value" id="rtbSeen"
+                                        style="font-size: 0.85rem; color: #cfc2d7;">-</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="aether-btn-primary mt-auto" onclick="switchView('dashboard')">
+                            <span class="material-symbols-outlined" style="font-size:16px;">tune</span> CONFIGURAR NODO
+                        </button>
+                    </div>
+
                 </div>
+            </div> <!-- End VIEW CHAT -->
 
-                <!-- API KEYS & RAW COMMANDS (Bottom Span 8) -->
-                <div class="card span-8 delay-5" style="margin-bottom: 2rem;">
-                    <div class="card-header" style="justify-content: space-between;">
-                        <h3>Pool de Llaves AI (Circuit Breakers)</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/api/config')">Ver /api/config</button>
-                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/api/users')">Ver /api/users</button>
-                            <button class="btn-outline" style="padding: 6px 12px; font-size: 0.7rem;" onclick="openSecuredEndpoint('/health')">Ver /health</button>
-                        </div>
-                    </div>
-                    
-                    <div class="clean-list" id="keysList">
-                        <div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">
-                            Cargando pool de llaves...
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- LIVE INTELLIGENCE STREAM (Chat Mirror) - Full Width -->
-                <div class="card span-12 delay-5" id="chatMirrorCard">
-                    <div class="card-header">
-                        <div>
-                            <h3>Live Intelligence Stream</h3>
-                            <p style="font-size: 0.75rem; color: var(--on-surface-variant); margin-top: 4px;">
-                                Espejo de conversación WhatsApp ⟺ Gemini AI — Selección actual: <strong id="chatPhoneLabel" class="color-accent">Ninguno</strong>
-                            </p>
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <button class="btn-outline" style="font-size: 0.7rem; padding: 6px 12px;" onclick="loadChatMirror()">⟳ Refresh</button>
-                            <label style="font-size: 0.7rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--on-surface-variant);">
-                                <input type="checkbox" id="chatAutoRefresh" checked style="accent-color: var(--primary);" />
-                                Auto-poll
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="chat-stream" id="chatStream">
-                        <div class="chat-empty-state">
-                            <span style="font-size: 2.5rem;">🦉</span>
-                            <p>Selecciona un usuario para ver su historial de conversación en tiempo real.</p>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
         </main>
-        
+
+
         <!-- TOASTS -->
         <div class="toast-wrap" id="toastWrap"></div>
+
+        <!-- ADMIN TOKEN OVERLAY -->
+        <div id="adminTokenOverlay" class="admin-token-overlay" style="display: none;">
+            <div class="admin-token-modal">
+                <div class="lock-icon-container">
+                    <span class="material-symbols-outlined neon-lock">lock</span>
+                </div>
+                <h2 class="neon-title">Acceso Restringido</h2>
+                <p class="neon-desc">Un <strong>ADMIN_TOKEN</strong> es necesario para ver los chats y la información
+                    del dashboard.</p>
+                <div class="neon-input-group">
+                    <input type="password" id="adminTokenInput" placeholder="Ingresa ADMIN_TOKEN" class="neon-input">
+                    <button class="btn-outline"
+                        style="padding: 6px 12px; font-size: 0.75rem; border-color: var(--primary); color: var(--primary);"
+                        onclick="saveAdminToken()">Guardar</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
+
 </html>

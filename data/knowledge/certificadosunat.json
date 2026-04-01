@@ -1,5 +1,9 @@
 {
   "sitio": "Certificado Digital - SUNAT Perú",
+  "mercado": "Peru",
+  "entidad_fiscal": "SUNAT",
+  "pais_iso": "PE",
+  "keywords": ["sunat", "peru", "indecopi", "certificado peru", "facturacion peru", "certificado sunat"],
   "url": "https://buho.la/store/certificado-sunat",
   "ultima_actualizacion": "2026-03-26T19:49:31.839Z",
   "descripcion_general": "Certificado Digital para facturación electrónica válido para SUNAT. Todo el proceso de validación es remoto. Acreditado por INDECOPI con vigencia anual, bianual o trianual. Emisión en menos de 24 horas. Incluye gestión de emisión ante la entidad certificadora.",
@@ -103,13 +107,7 @@
       "url_pedido": "https://buho.la/store/certificado-sunat/certificado-digital-trianual",
       "ciclos_facturacion": [
         {
-          "ciclo": "Anual",
-          "precio": "S/499.00 PEN",
-          "descuento": "",
-          "precio_original": ""
-        },
-        {
-          "ciclo": "Trienal",
+          "ciclo": "Trianual",
           "precio": "S/499.00 PEN",
           "descuento": "",
           "precio_original": ""

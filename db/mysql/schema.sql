@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   processed_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
   failed_count BIGINT UNSIGNED NOT NULL DEFAULT 0,
   avg_latency_ms DECIMAL(10,2) NOT NULL DEFAULT 0,
-  notes TEXT NULL,
+  notes TEXT NULL,                                                                                                                            
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

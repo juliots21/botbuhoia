@@ -187,16 +187,46 @@ class KnowledgeLoader {
         const tokens = this._extractQueryTokens(query);
         if (!tokens.length) return [];
 
+        const queryNorm = this._normalizeText(query);
+
+        // Detectar señales geográficas en el query del usuario
+        const peruSignals = ['sunat', 'peru', 'indecopi', 'soles', 's/'];
+        const colombiaSignals = ['dian', 'colombia', 'radian', 'bancolombia', 'cop', 'pesos colombianos', 'nit'];
+        const queryMentionsPeru = peruSignals.some(s => queryNorm.includes(s));
+        const queryMentionsColombia = colombiaSignals.some(s => queryNorm.includes(s));
+
         const ranked = [];
         for (const entry of entries) {
             let score = 0;
             const sitioNorm = this._normalizeText(entry.sitio);
             const aliasNorm = this._normalizeText(entry.alias);
 
+            // Keywords del JSON también contribuyen al score
+            const entryKeywords = Array.isArray(entry.data?.keywords)
+                ? entry.data.keywords.map(k => this._normalizeText(k))
+                : [];
+
             for (const token of tokens) {
                 if (sitioNorm.includes(token)) score += 5;
                 if (aliasNorm.includes(token)) score += 4;
                 if (entry.searchBlob.includes(token)) score += 1;
+                if (entryKeywords.some(kw => kw.includes(token))) score += 3;
+            }
+
+            // Penalización geográfica: si el usuario menciona un país,
+            // penalizar fuertemente los productos del otro país
+            if (score > 0) {
+                const entryPais = this._normalizeText(entry.data?.pais_iso || '');
+                const entryBlob = entry.searchBlob || '';
+                const isPeruEntry = entryPais === 'pe' || peruSignals.some(s => entryBlob.includes(s));
+                const isColombiaEntry = entryPais === 'co' || colombiaSignals.some(s => entryBlob.includes(s));
+
+                if (queryMentionsPeru && isColombiaEntry && !queryMentionsColombia) {
+                    score -= 25; // Penalizar producto colombiano cuando se busca Perú
+                }
+                if (queryMentionsColombia && isPeruEntry && !queryMentionsPeru) {
+                    score -= 25; // Penalizar producto peruano cuando se busca Colombia
+                }
             }
 
             if (score > 0) {
@@ -364,6 +394,9 @@ class KnowledgeLoader {
 - Si el cliente pide los datos de cuenta o yape de forma directa, responde OBLIGATORIAMENTE con estos datos.
 - Se amable y calido. Usa solo emojis basicos de caritas permitidos.
 - Al finalizar cada respuesta, puedes incluir UNA pregunta breve y relevante solo si ayuda a avanzar; si el cliente ya cerro el tema, no preguntes.
+- REGLA DE CERTIFICADOS (CRITICA): Si el cliente pregunta por "certificado digital", "certificado" o "firma digital" SIN especificar pais o entidad (SUNAT/DIAN), DEBES preguntarle si es para Peru (SUNAT) o Colombia (DIAN) ANTES de dar precios o requisitos. NUNCA mezcles precios, requisitos ni datos de pago de ambos paises en una misma respuesta.
+- REGLA DE MONEDAS (CRITICA): Los precios en Soles (S/) son EXCLUSIVAMENTE para productos de Peru. Los precios en pesos colombianos (COP/$) son EXCLUSIVAMENTE para productos de Colombia. NUNCA des un precio en la moneda equivocada ni mezcles monedas de distintos paises.
+- REGLA ANTI-ALUCINACION: Si no tienes el dato exacto (precio, ciclo, requisito), di "no tengo esa info confirmada en este momento" en lugar de inventar un dato. NUNCA inventes precios, descuentos ni condiciones que no esten en tu base de conocimiento.
 
 Datos de Pago (DIGITAL BUHO S.A.C.):
 *BCP* - Cuenta Corriente en Soles (S/)

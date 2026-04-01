@@ -1,5 +1,9 @@
 {
   "sitio": "Certificado Digital - DIAN Colombia",
+  "mercado": "Colombia",
+  "entidad_fiscal": "DIAN",
+  "pais_iso": "CO",
+  "keywords": ["dian", "colombia", "radian", "facturacion colombia", "certificado colombia", "certificado dian", "bancolombia"],
   "url": "https://buho.la/store/certificados-dian",
   "ultima_actualizacion": "2026-03-26T19:51:13.956Z",
   "descripcion_general": "Certificado de firma digital para facturación electrónica en Colombia, válido ante la DIAN. El proceso de validación es 100% remoto e incluye acompañamiento comercial y operativo.",

@@ -17,8 +17,8 @@ class GeminiService {
         this.maxKnowledgePromptChars = Number.isFinite(config.gemini.maxKnowledgePromptChars)
             ? config.gemini.maxKnowledgePromptChars
             : 0;
-        this.initialKnowledgePromptChars = Math.max(Number(config.gemini.initialKnowledgePromptChars || 3800), 1200);
-        this.retryKnowledgePromptChars = Math.max(Number(config.gemini.retryKnowledgePromptChars || 2200), 900);
+        this.initialKnowledgePromptChars = Math.max(Number(config.gemini.initialKnowledgePromptChars || 8000), 3000);
+        this.retryKnowledgePromptChars = Math.max(Number(config.gemini.retryKnowledgePromptChars || 5000), 2000);
         this.initialHistoryWindow = Math.min(Math.max(Number(config.gemini.initialHistoryWindow || 10), 6), 30);
         this.retryHistoryWindow = Math.min(Math.max(Number(config.gemini.retryHistoryWindow || 4), 4), 20);
         this.maxMessageCharsInHistory = Math.max(Number(config.gemini.maxMessageCharsInHistory || 900), 300);

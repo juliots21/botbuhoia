@@ -41,16 +41,16 @@ function clearDebugConsole() {
     debugLines = [];
     const box = document.getElementById('debugConsole');
     if (box) box.textContent = '';
-    debugLog('Consola debug limpiada manualmente.');
+    debugLog('Consola de depuración limpiada manualmente.');
 }
 
 async function copyDebugConsole() {
     try {
         const text = debugLines.join('\n');
-        await navigator.clipboard.writeText(text || 'Sin logs en consola debug.');
-        showToast('Consola debug copiada');
+        await navigator.clipboard.writeText(text || 'Sin registros en consola de depuración.');
+        showToast('Consola de depuración copiada');
     } catch (_) {
-        showToast('No se pudo copiar la consola debug');
+        showToast('No se pudo copiar la consola de depuración');
     }
 }
 
@@ -58,11 +58,11 @@ function toggleDebugConsole() {
     debugEnabled = !debugEnabled;
     const btn = document.getElementById('debugToggleBtn');
     if (btn) {
-        btn.textContent = debugEnabled ? 'Debug ON' : 'Debug OFF';
+        btn.textContent = debugEnabled ? 'Depurar ON' : 'Depurar OFF';
         btn.classList.toggle('active', debugEnabled);
     }
     if (debugEnabled) {
-        debugLog('Debug reactivado.');
+        debugLog('Depuración reactivada.');
     }
 }
 
@@ -99,18 +99,17 @@ function updateAdminTokenStatus() {
 
 function ensureAdminToken() {
     adminToken = getStoredAdminToken();
-    if (adminToken) return true;
-
-    const entered = window.prompt('Ingresa tu ADMIN_API_TOKEN para usar el panel:');
-    if (!entered) {
-        updateAdminTokenStatus();
-        return false;
+    const overlay = document.getElementById('adminTokenOverlay');
+    
+    if (adminToken) {
+        if (overlay) overlay.style.display = 'none';
+        return true;
     }
 
-    adminToken = String(entered).trim();
-    setStoredAdminToken(adminToken);
+    // Comportamiento modal para token faltante
+    if (overlay) overlay.style.display = 'flex';
     updateAdminTokenStatus();
-    return Boolean(adminToken);
+    return false;
 }
 
 function saveAdminToken() {
@@ -120,6 +119,10 @@ function saveAdminToken() {
     setStoredAdminToken(value);
     updateAdminTokenStatus();
     showToast(value ? 'Token guardado' : 'Token eliminado');
+    if (value) {
+        // Recargar después de un breve retraso para que se muestre el toast
+        setTimeout(() => location.reload(), 300);
+    }
 }
 
 function buildAuthHeaders(base = {}) {
@@ -241,11 +244,22 @@ function setInputValueWithEffect(id, newValue) {
     }
 }
 
+function setInnerHtmlWithEffect(id, newHtml) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.innerHTML !== newHtml) {
+        el.innerHTML = newHtml;
+        el.classList.add('pulse-text');
+        setTimeout(() => el.classList.remove('pulse-text'), 500);
+    }
+}
+
 function setTextContentWithEffect(id, newText) {
     const el = document.getElementById(id);
     if (!el) return;
-    if (el.textContent != newText) {
-        el.textContent = newText;
+    const textStr = String(newText);
+    if (el.textContent !== textStr) {
+        el.textContent = textStr;
         el.classList.add('pulse-text');
         setTimeout(() => el.classList.remove('pulse-text'), 500);
     }
@@ -294,10 +308,26 @@ async function loadUsers() {
         }
 
         const currentVal = select.value;
-        select.innerHTML = users.map((u) => {
+        const optionsHtml = users.map((u) => {
             const name = u.userName ? ' - ' + u.userName : '';
             return `<option value="${u.phone}">${u.phone}${name}</option>`;
         }).join('');
+        
+        select.innerHTML = optionsHtml;
+        
+        const chatUserList = document.getElementById('chatUserList');
+        if (chatUserList) {
+            chatUserList.innerHTML = users.map((u) => {
+                const isActive = u.phone === selectedUserPhone ? 'active' : '';
+                return `<div class="chat-user-item ${isActive}" onclick="syncUserSelect('${u.phone}')">
+                    <div class="chat-user-item-header">
+                        <span class="chat-user-phone">${u.phone}</span>
+                        <span class="chat-user-badge ai-active">AI</span>
+                    </div>
+                    <div class="chat-user-msg">${u.userName || 'Usuario App'}</div>
+                </div>`;
+            }).join('');
+        }
 
         if (currentVal && users.some((u) => u.phone === currentVal)) {
             select.value = currentVal;
@@ -358,14 +388,23 @@ async function loadSelectedUserConfig() {
         }
 
         const meta = [
-            '📱 ' + selectedUserPhone,
-            '👤 ' + (user.userName || 'N/D'),
-            '📥 ' + (user.messagesReceived || 0),
-            '⚙️ ' + (user.messagesProcessed || 0),
-            '❌ ' + (user.messagesFailed || 0),
-            '⏱️ ' + formatTs(user.lastSeenAt)
-        ].join('  ·  ');
-        setTextContentWithEffect('userMeta', meta);
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">smartphone</span> ' + selectedUserPhone,
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">person</span> ' + (user.userName || 'N/D'),
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">inbox_customize</span> ' + (user.messagesReceived || 0),
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">settings_motion_mode</span> ' + (user.messagesProcessed || 0),
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle; color:var(--err);">error</span> ' + (user.messagesFailed || 0),
+            '<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">schedule</span> ' + formatTs(user.lastSeenAt)
+        ].join(' &nbsp;&middot;&nbsp; ');
+        setInnerHtmlWithEffect('userMeta', meta);
+
+        // Update RTB Sidebar
+        setTextContentWithEffect('rtbPhone', selectedUserPhone);
+        setTextContentWithEffect('rtbName', user.userName || 'Entidad Desconocida');
+        setTextContentWithEffect('rtbProcessed', user.messagesProcessed || 0);
+        setTextContentWithEffect('rtbReceived', user.messagesReceived || 0);
+        setTextContentWithEffect('rtbFailed', user.messagesFailed || 0);
+        setTextContentWithEffect('rtbSeen', formatTs(user.lastSeenAt));
+
     } catch (err) {
         // Silently fail if not found, to avoid spam
     }
@@ -413,7 +452,7 @@ function renderKeys(keys) {
     if(!body) return;
     
     if (!Array.isArray(keys) || keys.length === 0) {
-        body.innerHTML = '<div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">Sin keys configuradas</div>';
+        body.innerHTML = '<div class="clean-list-item" style="text-align: center; color: var(--on-surface-variant);">Sin llaves configuradas</div>';
         return;
     }
 
@@ -423,13 +462,13 @@ function renderKeys(keys) {
             : '<span class="color-err">○ Inactiva</span>';
         return `<div class="clean-list-item">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong>${k.label || ('Key #' + k.index)}</strong>
+                <strong>${k.label || ('Llave #' + k.index)}</strong>
                 ${activeBadge}
             </div>
             <div style="display: flex; gap: 1.5rem; font-size: 0.75rem; margin-top: 6px;">
-                <span>Calls: ${k.totalCalls || 0}</span>
-                <span class="color-err">Errors: ${k.totalErrors || 0}</span>
-                <span>Disabled until: ${formatTs(k.disabledUntil)}</span>
+                <span>Llamadas: ${k.totalCalls || 0}</span>
+                <span class="color-err">Errores: ${k.totalErrors || 0}</span>
+                <span>Deshabilitada hasta: ${formatTs(k.disabledUntil)}</span>
             </div>
             <div style="font-size: 0.7rem; color: var(--on-surface-variant); margin-top: 4px;">${k.lastError || 'Sin errores'}</div>
         </div>`;
@@ -446,10 +485,10 @@ function renderRecentErrors(errors) {
 
 function formatCutoffReason(reason) {
     const labels = {
-        NO_KEYS_CONFIGURED: 'No hay API keys configuradas',
-        NO_AVAILABLE_KEYS: 'Circuit Breaker: Sin keys activas',
-        TOTAL_BUDGET_EXHAUSTED: 'Agotado el presupuesto de tiempo',
-        RESPONSE_TRUNCATED_TIMEOUT: 'Respuesta truncada por Timeout'
+        NO_KEYS_CONFIGURED: 'No hay llaves API configuradas',
+        NO_AVAILABLE_KEYS: 'Disyuntor: Sin llaves activas',
+        TOTAL_BUDGET_EXHAUSTED: 'Presupuesto de tiempo agotado',
+        RESPONSE_TRUNCATED_TIMEOUT: 'Respuesta truncada por tiempo de espera'
     };
     return labels[reason] || reason || 'No disponible';
 }
@@ -465,7 +504,7 @@ function renderLastRequestDebug(reqDebug) {
 }
 
 // =============================================
-// CHAT MIRROR: Live Intelligence Stream
+// ESPEJO DE CHAT: Flujo de Inteligencia en Vivo
 // =============================================
 let chatMirrorLastCount = 0;
 let chatMirrorTimer = null;
@@ -474,6 +513,17 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatMessageBody(raw) {
+    let text = escapeHtml(raw || '');
+    // WhatsApp-style bold: *text*
+    text = text.replace(/\*(.+?)\*/g, '<strong>$1</strong>');
+    // WhatsApp-style italic: _text_
+    text = text.replace(/\_(.+?)\_/g, '<em>$1</em>');
+    // Line breaks
+    text = text.replace(/\n/g, '<br>');
+    return text;
 }
 
 function formatChatTime(isoStr) {
@@ -491,9 +541,11 @@ async function loadChatMirror() {
 
     const stream = document.getElementById('chatStream');
     const phoneLabel = document.getElementById('chatPhoneLabel');
+    const nameLabel = document.getElementById('chatUserNameLabel');
     if (!stream) return;
 
     if (phoneLabel) phoneLabel.textContent = selectedUserPhone;
+    if (nameLabel) nameLabel.textContent = "Monitoreo en vivo";
 
     try {
         const data = await fetchJSON('/api/chat/' + encodeURIComponent(selectedUserPhone) + '?limit=150');
@@ -502,38 +554,36 @@ async function loadChatMirror() {
         if (messages.length === 0) {
             stream.innerHTML = `
                 <div class="chat-empty-state">
-                    <span style="font-size: 2.5rem;">📭</span>
+                    <span class="material-symbols-outlined" style="font-size: 3rem; margin-bottom: 1rem; color: var(--on-surface-variant);">mark_chat_unread</span>
                     <p>No hay mensajes registrados para <strong>${escapeHtml(selectedUserPhone)}</strong> aún.</p>
-                    <p style="font-size: 0.75rem;">Los mensajes aparecerán aquí cuando el usuario interactúe con el bot vía WhatsApp.</p>
                 </div>
             `;
             chatMirrorLastCount = 0;
             return;
         }
 
-        // Only re-render if count changed (performance optimization)
+        // Solo re-renderizar si el conteo cambió (optimización de rendimiento)
         if (messages.length === chatMirrorLastCount) return;
         chatMirrorLastCount = messages.length;
 
         stream.innerHTML = messages.map((msg, i) => {
             const dir = msg.direction === 'inbound' ? 'inbound' : 'outbound';
-            const senderLabel = dir === 'inbound' ? '👤 Usuario' : '🦉 Buho AI';
+            const senderLabel = dir === 'inbound' ? 'Usuario' : 'Buho AI';
             const time = formatChatTime(msg.created_at);
             const latencyBadge = msg.latency_ms 
-                ? `<div class="bubble-latency">⚡ ${msg.latency_ms}ms</div>` 
+                ? `<span class="msg-latency"><span class="material-symbols-outlined" style="font-size:10px; vertical-align:middle;">bolt</span> ${msg.latency_ms}ms</span>` 
                 : '';
 
-            return `<div class="chat-bubble ${dir}" style="animation-delay: ${Math.min(i * 0.03, 0.5)}s">
-                <div class="bubble-meta">
-                    <span class="bubble-sender">${senderLabel}</span>
-                    <span class="bubble-time">${time}</span>
+            return `<div class="msg-wrapper ${dir}" style="animation-delay: ${Math.min(i * 0.03, 0.5)}s">
+                <div class="msg-meta">
+                    ${dir === 'outbound' ? latencyBadge : ''}
+                    <span>${senderLabel} • ${time}</span>
                 </div>
-                <div class="bubble-body">${escapeHtml(msg.body || '')}</div>
-                ${latencyBadge}
+                <div class="msg-bubble">${formatMessageBody(msg.body || '')}</div>
             </div>`;
         }).join('');
 
-        // Auto-scroll to bottom
+        // Auto-scroll al final
         requestAnimationFrame(() => {
             stream.scrollTop = stream.scrollHeight;
         });
@@ -545,12 +595,23 @@ async function loadChatMirror() {
 
 function startChatMirrorPolling() {
     if (chatMirrorTimer) clearInterval(chatMirrorTimer);
-    chatMirrorTimer = setInterval(() => {
+    let isPolling = false;
+    chatMirrorTimer = setInterval(async () => {
         const autoRefresh = document.getElementById('chatAutoRefresh');
-        if (autoRefresh && autoRefresh.checked && selectedUserPhone) {
-            loadChatMirror();
+        if (autoRefresh && autoRefresh.checked && selectedUserPhone && !isPolling) {
+            isPolling = true;
+            try {
+                // Polling ultraligero solo pidiendo el COUNT
+                const data = await fetchJSON('/api/chat/' + encodeURIComponent(selectedUserPhone) + '/count');
+                if (data.count !== undefined && data.count !== chatMirrorLastCount) {
+                    await loadChatMirror();
+                }
+            } catch (err) {
+                // ignorar errores de polling en bg
+            }
+            isPolling = false;
         }
-    }, 8000);
+    }, 1500);
 }
 
 async function refreshMetrics() {
@@ -560,7 +621,7 @@ async function refreshMetrics() {
 
         const dot = document.getElementById('statusDot');
         if(dot) dot.className = 'dot online pulse-success';
-        setTextContentWithEffect('statusText', 'Online - V. Activa');
+        setTextContentWithEffect('statusText', 'En línea - V. Activa');
 
         // KPIs
         setTextContentWithEffect('sReceived', data.counters?.messagesReceived || 0);
@@ -604,17 +665,17 @@ async function refreshMetrics() {
     }
 }
 
-// React-like mount init
+// Inicialización de montaje
 document.addEventListener('DOMContentLoaded', async () => {
     // Add load-in fade effect to main shell
     document.body.classList.add('app-loaded');
     
-    // Bind Events
+    // Vincular Eventos
     const selectEl = document.getElementById('userSelect');
     if (selectEl) {
         selectEl.addEventListener('change', async (e) => {
             selectedUserPhone = e.target.value;
-            chatMirrorLastCount = 0; // Force re-render on user change
+            chatMirrorLastCount = 0; // Forzar re-renderizado al cambiar usuario
             await loadSelectedUserConfig();
             await loadChatMirror();
         });
@@ -628,22 +689,122 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => { showToast('Configura ADMIN_API_TOKEN en la barra lateral'); }, 1000);
     }
 
-    // Skeleton loaders wait
+    // Esperar cargadores skeleton
     try {
         await Promise.all([
             loadGeneralConfig(),
             loadUsers(),
             refreshMetrics()
         ]);
-        // Initial chat load after users are loaded
-        if (selectedUserPhone) {
-            await loadChatMirror();
-        }
+        // Router inicial: decide qué pantalla mostrar y qué usuario cargar basado en la URL
+        handleRoute();
     } catch(e) {}
     
-    // Auto refreshes
+    // Auto-actualizaciones
     setInterval(refreshMetrics, 10000);
     setInterval(loadUsers, 15000);
     startChatMirrorPolling();
 });
+
+// =============================================
+// ENRUTAMIENTO DE APP Y MÓVIL (SPA) + HASH ROUTER
+// =============================================
+function toggleMobileMenu() {
+    document.querySelector('.sidebar').classList.toggle('active');
+}
+
+function backToThreadList() {
+    // Volver a la lista de chats (quitar el phone del hash)
+    window.location.hash = 'chat';
+    document.querySelector('.chat-sidebar').classList.remove('mobile-hidden');
+    document.querySelector('.chat-main').classList.remove('mobile-active');
+}
+
+function switchView(viewName, skipHashUpdate) {
+    // Hide mobile menu on navigation
+    document.querySelector('.sidebar').classList.remove('active');
+
+    // 1. Hide all views
+    document.getElementById('view-dashboard').style.display = 'none';
+    document.getElementById('view-chat').style.display = 'none';
+    
+    // 2. Remove active from nav links
+    document.querySelectorAll('.side-menu a').forEach(el => el.classList.remove('active'));
+    
+    // 3. Show requested view
+    const breadcrumb = document.getElementById('topBreadcrumb');
+    
+    if (viewName === 'chat') {
+        document.getElementById('view-chat').style.display = 'block';
+        document.querySelector('.main-content').classList.add('no-scroll');
+        document.querySelectorAll('.side-menu a')[1].classList.add('active');
+        if(breadcrumb) breadcrumb.innerHTML = '<span class="muted">Digital Buho</span> <span class="sep">/</span> <span class="active">Flujo de Inteligencia en Vivo</span>';
+        loadChatMirror();
+    } else {
+        document.getElementById('view-dashboard').style.display = 'block';
+        document.querySelector('.main-content').classList.remove('no-scroll');
+        document.querySelectorAll('.side-menu a')[0].classList.add('active');
+        if(breadcrumb) breadcrumb.innerHTML = '<span class="muted">Digital Buho</span> <span class="sep">/</span> <span class="active">Panel de Control</span>';
+    }
+}
+
+// === HASH ROUTER ===
+function handleRoute() {
+    const hash = window.location.hash.slice(1) || 'dashboard'; // quitar el #
+    const parts = hash.split('/');
+    const view = parts[0]; // 'dashboard', 'chat'
+    const param = parts[1] || null; // phone number si existe
+
+    if (view === 'chat') {
+        switchView('chat', true);
+        // Si hay un teléfono en la URL, seleccionar ese chat
+        if (param) {
+            const decoded = decodeURIComponent(param);
+            if (decoded !== selectedUserPhone) {
+                syncUserSelect(decoded);
+            }
+        }
+    } else {
+        switchView('dashboard', true);
+    }
+}
+
+// Escuchar cambios de hash (atrás/adelante del navegador, clicks en links)
+window.addEventListener('hashchange', handleRoute);
+
+function syncUserSelect(phone) {
+    selectedUserPhone = phone;
+    chatMirrorLastCount = 0;
+
+    // Actualizar hash con el teléfono seleccionado (SIN refrescar)
+    const newHash = '#chat/' + encodeURIComponent(phone);
+    if (window.location.hash !== newHash) {
+        history.replaceState(null, '', newHash);
+    }
+    
+    // Sincronizar selector principal del panel
+    const mainSelect = document.getElementById('userSelect');
+    if (mainSelect && mainSelect.value !== phone) {
+        mainSelect.value = phone;
+        loadSelectedUserConfig();
+    }
+    
+    // Actualizar clase activa en barra lateral del chat
+    const chatUserItems = document.querySelectorAll('.chat-user-item');
+    chatUserItems.forEach(el => {
+        if (el.innerHTML.includes(phone)) {
+            el.classList.add('active');
+        } else {
+            el.classList.remove('active');
+        }
+    });
+    
+    loadChatMirror();
+
+    // Lógica específica para móvil
+    if (window.innerWidth <= 768) {
+        document.querySelector('.chat-sidebar').classList.add('mobile-hidden');
+        document.querySelector('.chat-main').classList.add('mobile-active');
+    }
+}
 

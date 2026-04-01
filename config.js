@@ -13,7 +13,7 @@ module.exports = {
         ].filter(Boolean),
         model: 'gemini-2.5-flash',
         generationConfig: {
-            temperature: 0.7,
+            temperature: 0.3,
             topP: 0.9,
             maxOutputTokens: 1100
         },
