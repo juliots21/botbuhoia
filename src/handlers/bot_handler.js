@@ -134,6 +134,38 @@ class BotHandler {
         });
     }
 
+    async handleIncomingAudio(userPhone, audioPayload, messageId, userName = '') {
+        userSettingsService.touchUser(userPhone, userName);
+
+        if (messageQueue.isDuplicate(messageId)) {
+            metrics.increment('duplicateMessages');
+            logger.debug(`[BOT] Audio duplicado ignorado: ${messageId} de ${userPhone}`);
+            return;
+        }
+
+        metrics.increment('messagesReceived');
+        metrics.trackUserReceived(userPhone, userName);
+        userSettingsService.markMessageReceived(userPhone);
+
+        const userConfig = userSettingsService.getUserSettings(userPhone);
+        const rateCheck = rateLimiter.check(userPhone, userConfig.rateLimiting);
+        if (!rateCheck.allowed) {
+            metrics.increment('rateLimitHits');
+            logger.warn(`[BOT] Rate limit para audio de ${userPhone}. Reintento en ${rateCheck.retryAfterMs}ms`);
+            await whatsappService.sendMessage(
+                userPhone,
+                'Estas enviando mensajes muy rapido. Espera unos segundos y vuelve a enviar el audio por favor.'
+            );
+            return;
+        }
+
+        messageQueue.enqueue(userPhone, () =>
+            this._processAudioMessage(userPhone, audioPayload, messageId, userName)
+        ).catch(err => {
+            logger.error(`[BOT] Error en cola de audio para ${userPhone}: ${err.message}`);
+        });
+    }
+
     /**
      * Procesamiento real del mensaje (ejecutado secuencialmente por la cola)
      */
@@ -284,6 +316,99 @@ class BotHandler {
         }
     }
 
+    async _processAudioMessage(userPhone, audioPayload, messageId, userName = '') {
+        const startTime = Date.now();
+
+        try {
+            logger.debug(`[BOT] Procesando audio de ${userPhone}...`);
+            await whatsappService.markAsRead(messageId);
+
+            const history = await this._getOrCreateConversation(userPhone);
+
+            const mediaId = String(audioPayload?.id || '').trim();
+            if (!mediaId) {
+                await whatsappService.sendMessage(
+                    userPhone,
+                    'No pude procesar ese audio porque llego sin identificador de archivo. Intenta reenviarlo, por favor.'
+                );
+                return;
+            }
+
+            const media = await whatsappService.downloadMediaAsBase64(mediaId);
+            const transcript = await geminiService.transcribeAudio(
+                {
+                    base64: media.base64,
+                    mimeType: media.mimeType,
+                    fileSizeBytes: media.fileSizeBytes
+                },
+                {
+                    userPhone
+                }
+            );
+
+            const transcribedText = String(transcript?.text || '').trim();
+            if (!transcribedText) {
+                await whatsappService.sendMessage(
+                    userPhone,
+                    'No pude transcribir el audio con suficiente claridad. Intenta enviar una nota de voz mas clara o en un lugar con menos ruido.'
+                );
+                return;
+            }
+
+            conversationStoreService.appendAuditMessage(
+                userPhone,
+                'inbound',
+                'user',
+                `[Audio transcrito] ${transcribedText}`,
+                messageId
+            ).catch(err => logger.error(`[BOT] Error logging inbound audio to MySQL: ${err.message}`));
+
+            const userConfig = userSettingsService.getUserSettings(userPhone);
+            const responseText = await geminiService.generateResponse(
+                transcribedText,
+                history.chatHistory,
+                userName,
+                userConfig.gemini,
+                userPhone
+            );
+
+            await this._trimHistoryWindow(history, userPhone);
+
+            history.lastActivity = Date.now();
+            history.messageCount++;
+
+            await this._persistConversationState(userPhone, history);
+
+            await whatsappService.sendMessage(userPhone, responseText);
+            metrics.increment('whatsappMessagesSent');
+
+            const latency = Date.now() - startTime;
+            metrics.increment('messagesProcessed');
+            metrics.trackUserProcessed(userPhone, latency, userName);
+            userSettingsService.markMessageProcessed(userPhone, latency);
+
+            conversationStoreService.appendAuditMessage(userPhone, 'outbound', 'bot', responseText, null, latency)
+                .catch(err => logger.error(`[BOT] Error logging outbound audio response to MySQL: ${err.message}`));
+
+            logger.info(`[BOT] ✓ Audio transcrito y respondido para ${userPhone} en ${latency}ms`);
+        } catch (error) {
+            metrics.increment('messagesFailed');
+            metrics.trackUserFailed(userPhone, userName);
+            metrics.recordError('bot_handler_audio', error.message, { phone: userPhone });
+            userSettingsService.markMessageFailed(userPhone);
+            logger.error(`[BOT] Error procesando audio de ${userPhone}. Detalles: ${error.stack}`);
+
+            try {
+                await whatsappService.sendMessage(
+                    userPhone,
+                    'Tuve un problema al procesar ese audio. Si deseas, vuelve a enviarlo o escribeme en texto y te ayudo al instante.'
+                );
+            } catch (waError) {
+                logger.error(`[BOT] No se pudo enviar error de audio a ${userPhone}. ${waError.message}`);
+            }
+        }
+    }
+
     /**
      * Maneja tipos de mensaje no soportados (imagen, audio, sticker, etc.)
      */
@@ -309,7 +434,7 @@ class BotHandler {
         const typeName = typeNames[messageType] || `mensajes de tipo "${messageType}"`;
         await whatsappService.sendMessage(
             userPhone,
-            `Por el momento solo puedo procesar mensajes de texto ✍️. Todavía no tengo la habilidad de entender ${typeName}, pero estoy aprendiendo. ¡Escríbeme tu consulta y con gusto te ayudo! 😊`
+            `Por el momento no puedo procesar ${typeName}. Escribeme tu consulta en texto y con gusto te ayudo. 😊`
         );
     }
 

@@ -78,6 +78,11 @@ router.post('/', (req, res) => {
                 botHandler.handleIncomingImage(from, message.image || {}, messageId, userName).catch(err => {
                     logger.error(`[BOT] Error procesando imagen de ${from}: ${err.message}`);
                 });
+            } else if (message.type === 'audio') {
+                logger.info(`[WEBHOOK] 🎙️ Audio recibido de ${from} (${userName})`);
+                botHandler.handleIncomingAudio(from, message.audio || {}, messageId, userName).catch(err => {
+                    logger.error(`[BOT] Error procesando audio de ${from}: ${err.message}`);
+                });
             } else {
                 // Manejar tipos no soportados con respuesta informativa
                 logger.debug(`[WEBHOOK] Mensaje tipo "${message.type}" de ${from}`);

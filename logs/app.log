@@ -568,3 +568,19 @@
 2026-03-31 12:42:57 [INFO]: [GEMINI] ✓ Respuesta generada con key #2 en 4028ms
 2026-03-31 12:42:57 [DEBUG]: [GEMINI] Procesando con key #2/4
 2026-03-31 12:43:02 [INFO]: [GEMINI] ✓ Respuesta generada con key #2 en 4469ms
+2026-04-01 11:46:00 [WARN]: [GEMINI] No hay API keys configuradas en las variables de entorno (.env). La IA no podrá responder.
+2026-04-01 11:52:36 [DEBUG]: [BOT] Procesando audio de 51986079838...
+2026-04-01 11:52:40 [INFO]: [GEMINI] ✓ Audio transcrito (audio/wav, 230KB) para 51986079838
+2026-04-01 11:52:40 [WARN]: [GEMINI] Prompt de conocimiento recortado para rendimiento: 8000 caracteres.
+2026-04-01 11:52:40 [DEBUG]: [GEMINI] Procesando con key #1/1
+2026-04-01 11:52:42 [INFO]: [GEMINI] ✓ Respuesta generada con key #1 en 1997ms
+2026-04-01 11:52:42 [INFO]: [BOT] Contexto de memoria para 51986079838: 2 mensajes cargados.
+2026-04-01 11:52:42 [INFO]: [BOT] ✓ Audio transcrito y respondido para 51986079838 en 5624ms
+2026-04-01 11:53:37 [INFO]: [GEMINI] ✓ Audio transcrito (audio/wav, 230KB) para 51986079838
+2026-04-01 11:53:37 [WARN]: [GEMINI] Prompt de conocimiento recortado para rendimiento: 8000 caracteres.
+2026-04-01 11:53:37 [DEBUG]: [GEMINI] Procesando con key #1/1
+2026-04-01 11:53:39 [INFO]: [GEMINI] ✓ Respuesta generada con key #1 en 1736ms
+2026-04-01 11:53:59 [INFO]: [GEMINI] ✓ Audio transcrito (audio/wav, 230KB) para 51986079838
+2026-04-01 11:54:00 [WARN]: [GEMINI] Prompt de conocimiento recortado para rendimiento: 8000 caracteres.
+2026-04-01 11:54:00 [DEBUG]: [GEMINI] Procesando con key #1/1
+2026-04-01 11:54:01 [INFO]: [GEMINI] ✓ Respuesta generada con key #1 en 1731ms

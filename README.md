@@ -16,6 +16,7 @@ Bot de WhatsApp con IA (Gemini) orientado a productos Digital Buho, con panel de
 ## Qué resuelve este sistema
 
 - Atiende mensajes de clientes por WhatsApp en lenguaje natural.
+- Procesa notas de voz de WhatsApp: transcribe audio con Gemini y responde automáticamente.
 - Responde con contexto de conocimiento cargado desde data/knowledge.
 - Mantiene memoria conversacional con ventana configurable por usuario/global.
 - Permite tuning en caliente desde panel admin y API admin protegida por token.
@@ -166,6 +167,25 @@ $env:SCRAPE_ONLY='fastura_colombia'; node scrape_buho_store.js
 - GET /api/chat/:phone: historial de chat espejo.
 - GET /api/chat/:phone/count: conteo de mensajes.
 
+## Soporte de audio (WhatsApp -> Gemini -> Respuesta)
+
+- El webhook detecta mensajes de tipo audio y los enruta al pipeline dedicado.
+- Se descarga el archivo de voz desde WhatsApp Cloud API en base64.
+- Gemini transcribe el audio a texto.
+- El texto transcrito entra al mismo flujo conversacional del bot para generar respuesta.
+- Se guarda auditoría en MySQL como inbound transcrito y outbound del bot.
+
+MIME objetivo recomendado desde WhatsApp:
+
+- audio/ogg
+- audio/ogg; codecs=opus
+- audio/mpeg
+- audio/mp3
+- audio/wav
+- audio/webm
+- audio/mp4
+- audio/aac
+
 ## Seguridad
 
 - Webhook con validación HMAC SHA-256 usando header X-Hub-Signature-256.
@@ -194,6 +214,7 @@ La siguiente captura fue tomada en:
 - Contexto: acceso de administración con token provisto para esta tarea.
 
 <img width="746" height="439" alt="image" src="https://github.com/user-attachments/assets/0bf957aa-6217-42eb-8895-5c9a7776de15" />
+
 
 ## Script de captura usado
 

@@ -1,6 +1,7 @@
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 const { ChatPromptTemplate, MessagesPlaceholder } = require("@langchain/core/prompts");
 const { HumanMessage, AIMessage } = require("@langchain/core/messages");
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const config = require('../../config');
 const logger = require('../utils/logger');
 const metrics = require('../utils/metrics');
@@ -1021,6 +1022,122 @@ class GeminiService {
             const info = this._classifyError(error);
             logger.error(`[GEMINI] Error validando comprobante: ${info.code} - ${info.technicalMessage}`);
             return 'NO VALIDADO ❌\nMotivo: No se pudo completar la validacion automatica de la imagen.';
+        }
+    }
+
+    async transcribeAudio(audioInput = {}, options = {}) {
+        const audioBase64 = String(audioInput?.base64 || '').trim();
+        const mimeType = String(audioInput?.mimeType || 'audio/ogg').trim().toLowerCase();
+        const fileSizeBytes = Number(audioInput?.fileSizeBytes || 0);
+        const userPhone = String(options?.userPhone || '').trim();
+
+        if (!audioBase64) {
+            throw new GeminiAPIError('No se recibio contenido de audio para transcribir');
+        }
+
+        const allowedMimeTypes = new Set([
+            'audio/ogg',
+            'audio/ogg; codecs=opus',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/wav',
+            'audio/x-wav',
+            'audio/webm',
+            'audio/mp4',
+            'audio/aac'
+        ]);
+
+        if (!allowedMimeTypes.has(mimeType)) {
+            throw new GeminiAPIError(`Formato de audio no soportado para transcripcion: ${mimeType}`);
+        }
+
+        if (fileSizeBytes > 20 * 1024 * 1024) {
+            throw new GeminiAPIError('Audio supera el limite de 20MB para transcripcion');
+        }
+
+        const keyData = this._getNextAvailableKey();
+        if (!keyData) {
+            throw new GeminiAPIError('No hay API keys disponibles temporalmente para transcripcion');
+        }
+
+        const runtimeConfig = this._resolveRuntimeConfig(null);
+        const prompt = [
+            'Transcribe este audio en espanol de manera literal.',
+            'No resumas.',
+            'No traduzcas.',
+            'No agregues analisis.',
+            'Devuelve solo el texto transcrito limpio.'
+        ].join(' ');
+
+        try {
+            keyData.totalCalls += 1;
+            keyData.lastUsedAt = Date.now();
+            metrics.increment('geminiCalls');
+
+            const genAI = new GoogleGenerativeAI(keyData.apiKey);
+            const model = genAI.getGenerativeModel({
+                model: config.gemini.model || 'gemini-2.5-flash',
+                generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: Math.max(700, Math.min(runtimeConfig.generation.maxOutputTokens, 1200)),
+                    topP: runtimeConfig.generation.topP
+                }
+            });
+
+            const timeoutMs = Math.max(25000, runtimeConfig.timeout);
+            const result = await Promise.race([
+                model.generateContent([
+                    { text: prompt },
+                    {
+                        inlineData: {
+                            mimeType,
+                            data: audioBase64
+                        }
+                    }
+                ]),
+                new Promise((_, reject) => {
+                    setTimeout(() => reject(new GeminiAPIError('Timeout transcribiendo audio con Gemini')), timeoutMs);
+                })
+            ]);
+
+            const text = String(result?.response?.text?.() || '').trim();
+            if (!text) {
+                throw new GeminiAPIError('Gemini devolvio transcripcion vacia');
+            }
+
+            const normalized = text
+                .replace(/^transcripci[oó]n\s*[:\-]\s*/i, '')
+                .replace(/^texto\s*[:\-]\s*/i, '')
+                .trim();
+
+            keyData.failures = 0;
+            keyData.lastError = null;
+            keyData.lastErrorAt = 0;
+
+            logger.info(`[GEMINI] ✓ Audio transcrito (${mimeType}, ${Math.round(fileSizeBytes / 1024)}KB) para ${userPhone || 'usuario_sin_telefono'}`);
+
+            return {
+                text: normalized,
+                mimeType,
+                fileSizeBytes
+            };
+        } catch (error) {
+            const info = this._classifyError(error);
+            keyData.failures += 1;
+            keyData.totalErrors += 1;
+            keyData.lastError = info.code;
+            keyData.lastErrorAt = Date.now();
+            metrics.increment('geminiErrors');
+
+            if (keyData.failures >= runtimeConfig.circuitBreaker.failureThreshold) {
+                keyData.disabledUntil = Date.now() + runtimeConfig.circuitBreaker.recoveryTimeMs;
+                metrics.increment('geminiKeyRotations');
+                logger.warn(`[GEMINI] ⚡ Circuit breaker activado por transcripcion en key #${keyData.index + 1}`);
+            }
+
+            this.currentKeyIndex = (this.currentKeyIndex + 1) % this.keys.length;
+            logger.error(`[GEMINI] Error transcribiendo audio: ${info.code} - ${info.technicalMessage}`);
+            throw new GeminiAPIError(`No se pudo transcribir el audio: ${info.code}`, error);
         }
     }
 
