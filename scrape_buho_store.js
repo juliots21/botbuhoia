@@ -565,6 +565,85 @@ async function scrapeFacturaloPro8Page(url) {
     }
 }
 
+async function scrapeFacturaloPro8MigrationPage(url) {
+    try {
+        console.log(`\n📦 Scrapeando (migracion Pro8): ${url}`);
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        const $ = cheerio.load(res.data);
+        const dangerBlock = $('.row.alert.alert-danger').first();
+        const warningBlock = $('.row.alert.alert-warning').first();
+
+        const dangerTitle = cleanText(dangerBlock.find('h1, h2, h3, h4, h5').first().text());
+        const warningTitle = cleanText(warningBlock.find('h1, h2, h3, h4, h5').first().text());
+
+        const dangerParagraphs = dangerBlock
+            .find('p')
+            .map((_, el) => cleanText($(el).text()))
+            .get()
+            .filter(Boolean);
+
+        const obsoleteFunctions = dangerBlock
+            .find('li')
+            .map((_, el) => cleanText($(el).text()))
+            .get()
+            .filter(Boolean);
+
+        const warningParagraphs = warningBlock
+            .find('p')
+            .map((_, el) => cleanText($(el).text()))
+            .get()
+            .filter(Boolean);
+
+        const warningText = cleanText(warningBlock.text());
+        const migrationCosts = {};
+        const costRegex = /S\/\s?(\d+)\s*para\s*migrar\s*desde\s*el\s*(Pro\d+)\s*al\s*Pro8/gi;
+        let costMatch;
+        while ((costMatch = costRegex.exec(warningText)) !== null) {
+            migrationCosts[`${costMatch[2]}_a_Pro8`] = `S/${costMatch[1]}`;
+        }
+
+        const importantNotes = [];
+        const importantRaw = warningParagraphs.find((line) => /precio indicado|migraci[oó]n se realiza|sin personalizaciones/i.test(line)) || '';
+        if (importantRaw) {
+            const parts = importantRaw
+                .split(/\s+-\s+/)
+                .map((p) => cleanText(p.replace(/^-\s*/, '')))
+                .filter(Boolean);
+            importantNotes.push(...parts);
+        }
+
+        return {
+            title: 'Migrar a Pro8',
+            description: dangerParagraphs[0] || warningParagraphs[0] || '',
+            plans: [],
+            sourceType: 'pro8-migration-info',
+            migrationData: {
+                url,
+                bloque_alerta_previa: {
+                    titulo: dangerTitle,
+                    descripcion: dangerParagraphs[0] || '',
+                    funciones_obsoletas: obsoleteFunctions,
+                    cierre: dangerParagraphs.slice(1).find((line) => /comunicate|soluciones/i.test(line)) || ''
+                },
+                bloque_actualizacion_migracion: {
+                    titulo: warningTitle,
+                    descripcion: warningParagraphs.find((line) => /plan pro5|plan pro6|plan pro7|nuevo plan/i.test(line)) || warningParagraphs[0] || '',
+                    costos_migracion: migrationCosts,
+                    importante: importantNotes
+                }
+            }
+        };
+    } catch (error) {
+        console.error(`   ❌ Error en método migración Pro8: ${error.message}`);
+        return null;
+    }
+}
+
 async function scrapeFasturaColombiaPage(url) {
     try {
         console.log(`\n📦 Scrapeando (Fastura Colombia tabs): ${url}`);
@@ -1162,6 +1241,12 @@ const PRODUCTS = [
         samplePurchaseUrl: null
     },
     {
+        url: 'https://facturaloperu.com/pro8/',
+        jsonFile: 'migrar_a_pro8.json',
+        name: 'Migrar a Pro8',
+        samplePurchaseUrl: null
+    },
+    {
         url: 'https://facturaloperu.com/prox/',
         jsonFile: 'prox.json',
         name: 'Facturalo Perú - ProX',
@@ -1241,8 +1326,12 @@ const PRODUCTS = [
 /**
  * Extrae los planes y precios de una página de producto de buho.la/store
  */
-async function scrapeProductPage(url) {
+async function scrapeProductPage(url, product = null) {
     try {
+        if (/facturaloperu\.com\/pro8\/?$/i.test(url) && normalizeKey(product?.jsonFile || '') === 'migrarapro8json') {
+            return await scrapeFacturaloPro8MigrationPage(url);
+        }
+
         if (isManualDocumentationUrl(url)) {
             return await scrapeDocumentationPage(url);
         }
@@ -1404,8 +1493,21 @@ function updateProductJSON(product, productData) {
     const filePath = path.join(KNOWLEDGE_DIR, product.jsonFile);
 
     if (!fs.existsSync(filePath)) {
-        console.log(`   ⚠️  Archivo ${product.jsonFile} no existe, saltando actualización.`);
-        return;
+        if (productData && productData.sourceType === 'pro8-migration-info') {
+            const baseData = {
+                sitio: productData.title || 'Migrar a Pro8',
+                url: product.url,
+                ultima_actualizacion: new Date().toISOString(),
+                fuente: 'facturaloperu.com',
+                descripcion_general: productData.description || '',
+                bloques: {}
+            };
+            fs.writeFileSync(filePath, JSON.stringify(baseData, null, 2), 'utf-8');
+            console.log(`   🆕 Archivo creado: ${product.jsonFile}`);
+        } else {
+            console.log(`   ⚠️  Archivo ${product.jsonFile} no existe, saltando actualización.`);
+            return;
+        }
     }
 
     try {
@@ -1489,6 +1591,26 @@ function updateProductJSON(product, productData) {
             } else {
                 console.log('   ⚠️  Método Facturalo sin planes extraídos, se mantiene JSON actual.');
             }
+        } else if (productData && productData.sourceType === 'pro8-migration-info') {
+            const migrationData = productData.migrationData || {};
+            existingData.sitio = productData.title || existingData.sitio || 'Migrar a Pro8';
+            existingData.url = product.url;
+            existingData.descripcion_general = productData.description || existingData.descripcion_general || '';
+            existingData.bloques = {
+                alerta_previa_migracion: migrationData.bloque_alerta_previa || {
+                    titulo: '',
+                    descripcion: '',
+                    funciones_obsoletas: [],
+                    cierre: ''
+                },
+                alerta_actualizacion_migracion: migrationData.bloque_actualizacion_migracion || {
+                    titulo: '',
+                    descripcion: '',
+                    costos_migracion: {},
+                    importante: []
+                }
+            };
+            console.log('   ✅ Datos de migración Pro8 actualizados.');
         } else if (productData && productData.sourceType === 'facturalo-prox') {
             if (scrapedPlans.length > 0) {
                 existingData.planes = scrapedPlans;
@@ -1704,7 +1826,7 @@ async function main() {
         console.log(`🔍 Procesando: ${product.name}`);
 
         // 1. Scrapear página principal del producto
-        const productData = await scrapeProductPage(product.url);
+        const productData = await scrapeProductPage(product.url, product);
 
         // 2. Extraer ciclos de facturación reales de los enlaces "Pedir Ahora" de cada plan
         if (productData && productData.plans.length > 0) {

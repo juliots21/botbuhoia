@@ -129,6 +129,8 @@ class GeminiService {
                 datos_registro_cliente: Array.isArray(data.datos_registro_cliente)
                     ? data.datos_registro_cliente.slice(0, 8)
                     : undefined,
+                migraciones: data.migraciones || undefined,
+                bloques_migracion: data.bloques || undefined,
                 contacto: includeContact ? (data.contacto || undefined) : undefined,
                 nota: data.nota || data.nota_precios || ''
             };
@@ -626,6 +628,25 @@ class GeminiService {
 
     async _resolveKnowledgeContextQuery(userMessage, chatHistory) {
         const current = String(userMessage || '').trim();
+        const currentNorm = this._normalizeFlowText(current);
+        const migrationIntent = /(migr\w+)/i.test(currentNorm)
+            && /(pro\s*5|pro\s*6|pro\s*7|pro\s*8|pro8)/i.test(currentNorm);
+
+        if (migrationIntent) {
+            return {
+                query: 'Migrar a Pro8',
+                inferredFromHistory: false,
+                activeProduct: 'Migrar a Pro8',
+                resolutionMode: 'MIGRATION_INTENT_PRO8',
+                trace: {
+                    messageChars: current.length,
+                    intentNeedsProductLock: true,
+                    explicitCurrentProduct: 'Migrar a Pro8',
+                    migrationIntent: true
+                }
+            };
+        }
+
         const currentMatches = await knowledgeLoader.findProductsByQuery(current, 3);
         const intentNeedsProductLock = /\b(plan|planes|mes|meses|mensual|trimestral|semestral|semi[-\s]?anual|anual|precio|costo|cu[aá]nto|priority|essential|pro\d+)\b/i.test(current);
         const explicitCurrentProduct = this._selectExplicitCurrentProduct(current, currentMatches)
@@ -994,6 +1015,7 @@ class GeminiService {
             `Fecha actual de referencia: ${todayIso}.`,
             `La fecha del comprobante debe ser reciente (<= ${maxAgeDays} dias).`,
             'Analiza la imagen y determina si es un comprobante de pago valido.',
+            'Si la imagen NO es un comprobante/boleta/factura de pago, marca NO VALIDADO y explica que no corresponde a un comprobante.',
             'Valida como minimo: legibilidad, fecha, monto, numero de operacion, estado exitoso/aprobado, y coincidencia de destino (cuenta/CCI/Yape/PLIN/NIT/titular) con los perfiles permitidos.',
             'Si falta evidencia clave o hay duda razonable, marca NO VALIDADO.',
             `Contexto de pagos permitidos: ${validationContext}`,

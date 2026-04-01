@@ -237,17 +237,42 @@ class BotHandler {
             logger.info(`[BOT] ✓ Flujo completado para ${userPhone} en ${latency}ms`);
 
         } catch (error) {
+            const errorText = [
+                String(error?.message || ''),
+                String(error?.cause?.message || ''),
+                String(error?.response?.data?.error?.message || '')
+            ].join(' | ').toLowerCase();
+            let userFacingMessage = 'Tuve un problema al procesar tu mensaje en este momento. Intenta nuevamente en unos segundos, por favor.';
+            let reasonCode = 'msg_unknown_error';
+
+            if (errorText.includes('timeout') || errorText.includes('timed out') || errorText.includes('deadline exceeded')) {
+                reasonCode = 'msg_timeout';
+                userFacingMessage = 'Tu mensaje tardo demasiado en procesarse por alta demanda. Reenvialo en unos segundos, por favor.';
+            } else if (errorText.includes('no_available_keys') || errorText.includes('no hay api keys disponibles') || errorText.includes('token_invalid_or_no_permission') || errorText.includes('api_key_invalid')) {
+                reasonCode = 'msg_gemini_auth_or_keys';
+                userFacingMessage = 'Tengo una intermitencia temporal del motor de IA. Intenta nuevamente en un momento.';
+            } else if (errorText.includes('quota_exhausted') || errorText.includes('rate_limited') || errorText.includes('resource exhausted') || errorText.includes('429')) {
+                reasonCode = 'msg_gemini_quota_or_rate';
+                userFacingMessage = 'Estoy con limite temporal de IA. Intenta nuevamente en 1 minuto, por favor.';
+            } else if (errorText.includes('service unavailable') || errorText.includes('overloaded') || errorText.includes('503') || errorText.includes('model_temporarily_unavailable')) {
+                reasonCode = 'msg_gemini_temporarily_unavailable';
+                userFacingMessage = 'La IA esta temporalmente no disponible. Reintenta en unos segundos, por favor.';
+            } else if (errorText.includes('econnreset') || errorText.includes('socket hang up') || errorText.includes('fetch failed') || errorText.includes('network')) {
+                reasonCode = 'msg_network_error';
+                userFacingMessage = 'Hubo una falla de red procesando tu mensaje. Reintenta en unos segundos, por favor.';
+            }
+
             metrics.increment('messagesFailed');
             metrics.trackUserFailed(userPhone, userName);
-            metrics.recordError('bot_handler', error.message, { phone: userPhone });
+            metrics.recordError('bot_handler', error.message, { phone: userPhone, reasonCode });
             userSettingsService.markMessageFailed(userPhone);
-            logger.error(`[BOT] Error procesando mensaje de ${userPhone}. Detalles: ${error.stack}`);
+            logger.error(`[BOT] Error procesando mensaje de ${userPhone}. reason=${reasonCode}. Detalles: ${error.stack}`);
 
             // Respuesta de emergencia
             try {
                 await whatsappService.sendMessage(
                     userPhone,
-                    "Disculpa, acabo de tener un pequeño tropiezo procesando tu mensaje. ¿Podrías volver a intentarlo, por favor? 😊"
+                    `${userFacingMessage}\n\nRef: ${reasonCode}`
                 );
             } catch (waError) {
                 logger.error(`[BOT] Ni la respuesta de emergencia pudo enviarse a ${userPhone}. ${waError.message}`);
@@ -272,33 +297,18 @@ class BotHandler {
             }
 
             const media = await whatsappService.downloadMediaAsBase64(mediaId);
-            const captionNorm = caption.toLowerCase();
-            const shouldValidatePayment = /(comprobante|voucher|valida|validar|pago|yape|plin|transferencia|bancolombia|deposito|factura|boleta|radian|dian)/i.test(captionNorm);
-
-            const imageReply = shouldValidatePayment
-                ? await geminiService.validatePaymentProof(
-                    {
-                        base64: media.base64,
-                        mimeType: media.mimeType,
-                        fileSizeBytes: media.fileSizeBytes,
-                        caption
-                    },
-                    {
-                        chatHistory: history.chatHistory,
-                        userPhone
-                    }
-                )
-                : await geminiService.describeImage(
-                    {
-                        base64: media.base64,
-                        mimeType: media.mimeType,
-                        fileSizeBytes: media.fileSizeBytes,
-                        caption
-                    },
-                    {
-                        userPhone
-                    }
-                );
+            const imageReply = await geminiService.validatePaymentProof(
+                {
+                    base64: media.base64,
+                    mimeType: media.mimeType,
+                    fileSizeBytes: media.fileSizeBytes,
+                    caption
+                },
+                {
+                    chatHistory: history.chatHistory,
+                    userPhone
+                }
+            );
 
             history.lastActivity = Date.now();
             history.messageCount++;
@@ -312,18 +322,37 @@ class BotHandler {
             metrics.increment('messagesProcessed');
             metrics.trackUserProcessed(userPhone, latency, userName);
             userSettingsService.markMessageProcessed(userPhone, latency);
-            logger.info(`[BOT] ✓ Imagen procesada (${shouldValidatePayment ? 'validacion_comprobante' : 'descripcion_general'}) para ${userPhone} en ${latency}ms`);
+            logger.info(`[BOT] ✓ Imagen procesada (validacion_por_contenido) para ${userPhone} en ${latency}ms`);
         } catch (error) {
+            const errorText = [
+                String(error?.message || ''),
+                String(error?.cause?.message || ''),
+                String(error?.response?.data?.error?.message || '')
+            ].join(' | ').toLowerCase();
+            let reasonCode = 'image_validation_runtime_error';
+            let userFacingMessage = 'NO VALIDADO ❌\nMotivo: No se pudo completar la revision del comprobante. Envia una foto mas clara y centrada, por favor.';
+
+            if (errorText.includes('no se pudo obtener metadata de media') || errorText.includes('no se pudo descargar media')) {
+                reasonCode = 'image_media_download_error';
+                userFacingMessage = 'NO VALIDADO ❌\nMotivo: No pude descargar la imagen desde WhatsApp en este momento. Reenviala, por favor.';
+            } else if (errorText.includes('timeout') || errorText.includes('timed out') || errorText.includes('deadline exceeded')) {
+                reasonCode = 'image_validation_timeout';
+                userFacingMessage = 'NO VALIDADO ❌\nMotivo: La validacion de imagen tardo demasiado. Reenvia una foto mas clara, por favor.';
+            } else if (errorText.includes('token_invalid_or_no_permission') || errorText.includes('api_key_invalid') || errorText.includes('no hay api keys disponibles')) {
+                reasonCode = 'image_gemini_auth_or_keys';
+                userFacingMessage = 'NO VALIDADO ❌\nMotivo: Tengo una intermitencia temporal del motor de validacion. Intenta nuevamente en unos minutos.';
+            }
+
             metrics.increment('messagesFailed');
             metrics.trackUserFailed(userPhone, userName);
-            metrics.recordError('bot_handler_image', error.message, { phone: userPhone });
+            metrics.recordError('bot_handler_image', error.message, { phone: userPhone, reasonCode });
             userSettingsService.markMessageFailed(userPhone);
-            logger.error(`[BOT] Error procesando imagen de ${userPhone}. Detalles: ${error.stack}`);
+            logger.error(`[BOT] Error procesando imagen de ${userPhone}. reason=${reasonCode}. Detalles: ${error.stack}`);
 
             try {
                 await whatsappService.sendMessage(
                     userPhone,
-                    'NO VALIDADO ❌\nMotivo: No se pudo completar la revision del comprobante. Envia una foto mas clara y centrada, por favor.'
+                    `${userFacingMessage}\n\nRef: ${reasonCode}`
                 );
             } catch (waError) {
                 logger.error(`[BOT] No se pudo enviar error de validacion de imagen a ${userPhone}. ${waError.message}`);

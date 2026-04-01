@@ -165,5 +165,5 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason) => {
     logger.error(`[CRITICAL] Promesa rechazada no manejada: ${reason}`);
-    gracefulShutdown('unhandledRejection');
+    // No cerramos el proceso por rechazos no manejados transitorios; se registran para diagnóstico.
 });
