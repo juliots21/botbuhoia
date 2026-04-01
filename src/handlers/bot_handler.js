@@ -392,16 +392,37 @@ class BotHandler {
 
             logger.info(`[BOT] ✓ Audio transcrito y respondido para ${userPhone} en ${latency}ms`);
         } catch (error) {
+                const errorText = String(error?.message || '').toLowerCase();
+            let userFacingMessage = 'Tuve un problema al procesar ese audio. Si deseas, vuelve a enviarlo o escribeme en texto y te ayudo al instante.';
+            let reasonCode = 'audio_unknown_error';
+
+            if (errorText.includes('formato de audio no soportado')) {
+                reasonCode = 'audio_unsupported_format';
+                userFacingMessage = 'No pude procesar ese formato de audio. Intenta reenviarlo como nota de voz de WhatsApp o escribeme en texto.';
+            } else if (errorText.includes('no se pudo obtener metadata de media') || errorText.includes('no se pudo descargar media')) {
+                reasonCode = 'audio_media_download_error';
+                userFacingMessage = 'No pude descargar tu audio desde WhatsApp en este momento. Reenvialo por favor en unos segundos.';
+            } else if (errorText.includes('audio supera el limite')) {
+                reasonCode = 'audio_too_large';
+                userFacingMessage = 'Tu audio es muy pesado para procesarlo. Envialo mas corto o en texto, por favor.';
+            } else if (errorText.includes('no se pudo transcribir el audio: timeout') || errorText.includes('timeout transcribiendo audio')) {
+                reasonCode = 'audio_transcription_timeout';
+                userFacingMessage = 'Tu audio tardo demasiado en procesarse. Reenvialo, idealmente mas corto, y te respondo.';
+            } else if (errorText.includes('token_invalid_or_no_permission') || errorText.includes('api_key_invalid') || errorText.includes('no hay api keys disponibles')) {
+                reasonCode = 'audio_gemini_auth_or_keys';
+                userFacingMessage = 'Estoy con una intermitencia de IA para procesar audios. Puedes reenviar en un momento o escribirme en texto.';
+            }
+
             metrics.increment('messagesFailed');
             metrics.trackUserFailed(userPhone, userName);
-            metrics.recordError('bot_handler_audio', error.message, { phone: userPhone });
+            metrics.recordError('bot_handler_audio', error.message, { phone: userPhone, reasonCode });
             userSettingsService.markMessageFailed(userPhone);
-            logger.error(`[BOT] Error procesando audio de ${userPhone}. Detalles: ${error.stack}`);
+            logger.error(`[BOT] Error procesando audio de ${userPhone}. reason=${reasonCode}. Detalles: ${error.stack}`);
 
             try {
                 await whatsappService.sendMessage(
                     userPhone,
-                    'Tuve un problema al procesar ese audio. Si deseas, vuelve a enviarlo o escribeme en texto y te ayudo al instante.'
+                    `${userFacingMessage}\n\nRef: ${reasonCode}`
                 );
             } catch (waError) {
                 logger.error(`[BOT] No se pudo enviar error de audio a ${userPhone}. ${waError.message}`);

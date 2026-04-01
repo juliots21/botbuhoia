@@ -1028,6 +1028,7 @@ class GeminiService {
     async transcribeAudio(audioInput = {}, options = {}) {
         const audioBase64 = String(audioInput?.base64 || '').trim();
         const mimeType = String(audioInput?.mimeType || 'audio/ogg').trim().toLowerCase();
+        const mimeNormalized = mimeType.replace(/\s+/g, '').replace(/;codecs=/g, ';codecs=').trim();
         const fileSizeBytes = Number(audioInput?.fileSizeBytes || 0);
         const userPhone = String(options?.userPhone || '').trim();
 
@@ -1035,19 +1036,18 @@ class GeminiService {
             throw new GeminiAPIError('No se recibio contenido de audio para transcribir');
         }
 
-        const allowedMimeTypes = new Set([
-            'audio/ogg',
-            'audio/ogg; codecs=opus',
-            'audio/mpeg',
-            'audio/mp3',
-            'audio/wav',
-            'audio/x-wav',
-            'audio/webm',
-            'audio/mp4',
-            'audio/aac'
-        ]);
+        const isAllowedMime =
+            mimeNormalized === 'audio/ogg' ||
+            mimeNormalized.startsWith('audio/ogg;codecs=opus') ||
+            mimeNormalized === 'audio/mpeg' ||
+            mimeNormalized === 'audio/mp3' ||
+            mimeNormalized === 'audio/wav' ||
+            mimeNormalized === 'audio/x-wav' ||
+            mimeNormalized === 'audio/webm' ||
+            mimeNormalized === 'audio/mp4' ||
+            mimeNormalized === 'audio/aac';
 
-        if (!allowedMimeTypes.has(mimeType)) {
+        if (!isAllowedMime) {
             throw new GeminiAPIError(`Formato de audio no soportado para transcripcion: ${mimeType}`);
         }
 
