@@ -392,7 +392,11 @@ class BotHandler {
 
             logger.info(`[BOT] ✓ Audio transcrito y respondido para ${userPhone} en ${latency}ms`);
         } catch (error) {
-                const errorText = String(error?.message || '').toLowerCase();
+            const errorText = [
+                String(error?.message || ''),
+                String(error?.cause?.message || ''),
+                String(error?.response?.data?.error?.message || '')
+            ].join(' | ').toLowerCase();
             let userFacingMessage = 'Tuve un problema al procesar ese audio. Si deseas, vuelve a enviarlo o escribeme en texto y te ayudo al instante.';
             let reasonCode = 'audio_unknown_error';
 
@@ -411,6 +415,18 @@ class BotHandler {
             } else if (errorText.includes('token_invalid_or_no_permission') || errorText.includes('api_key_invalid') || errorText.includes('no hay api keys disponibles')) {
                 reasonCode = 'audio_gemini_auth_or_keys';
                 userFacingMessage = 'Estoy con una intermitencia de IA para procesar audios. Puedes reenviar en un momento o escribirme en texto.';
+            } else if (errorText.includes('quota_exhausted') || errorText.includes('rate_limited') || errorText.includes('resource exhausted') || errorText.includes('429')) {
+                reasonCode = 'audio_gemini_quota_or_rate';
+                userFacingMessage = 'Estoy con limite temporal de IA para audios. Intenta de nuevo en 1 minuto o escribeme en texto.';
+            } else if (errorText.includes('model_temporarily_unavailable') || errorText.includes('503') || errorText.includes('overloaded') || errorText.includes('service unavailable')) {
+                reasonCode = 'audio_gemini_temporarily_unavailable';
+                userFacingMessage = 'La IA para audio esta temporalmente no disponible. Reenvia en unos segundos, por favor.';
+            } else if (errorText.includes('unknown_runtime_error') || errorText.includes('no se pudo transcribir el audio')) {
+                reasonCode = 'audio_transcription_runtime_error';
+                userFacingMessage = 'No pude interpretar ese audio esta vez. Reenvialo en una nota mas corta y clara, o escribeme en texto.';
+            } else if (errorText.includes('econnreset') || errorText.includes('socket hang up') || errorText.includes('fetch failed') || errorText.includes('network')) {
+                reasonCode = 'audio_network_error';
+                userFacingMessage = 'Hubo una falla de red al procesar tu audio. Reenvialo en unos segundos, por favor.';
             }
 
             metrics.increment('messagesFailed');
