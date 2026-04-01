@@ -49,6 +49,13 @@ function extractBasePrice(value = '') {
     return match ? cleanText(match[0]) : text;
 }
 
+function extractAmountLikePrice(value = '') {
+    const text = cleanText(value);
+    if (!text) return '';
+    const match = text.match(/(?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?/i);
+    return match ? cleanText(match[0]) : '';
+}
+
 function parsePriceNumber(value = '') {
     const text = cleanText(value);
     const m = text.match(/(\d[\d.,]*)/);
@@ -275,6 +282,128 @@ async function scrapePurchasePageWithBrowser(url, expectedPlanName = '') {
     }
 }
 
+async function scrapeCyclesByClickFromListing(listingUrl, expectedPlanName = '') {
+    try {
+        if (!playwright) {
+            playwright = require('playwright');
+        }
+    } catch (error) {
+        console.log('   ⚠️  Playwright no está disponible para click real en listado.');
+        return null;
+    }
+
+    let browser;
+    try {
+        browser = await playwright.chromium.launch({ headless: true });
+        const context = await browser.newContext({
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        });
+        const page = await context.newPage();
+
+        await page.goto(listingUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.waitForTimeout(1200);
+
+        const expectedNorm = normalizeKey(expectedPlanName);
+
+        // Activar la pestaña según el plan para que el botón Pedir Ahora sea visible.
+        if (expectedNorm.includes('api') || expectedNorm.includes('codigofuente')) {
+            const apiTab = page.locator('.section-content-packages .nav-link[href*="api-y-codigo-fuente"]').first();
+            if (await apiTab.count()) {
+                await apiTab.click({ timeout: 8000 });
+                await page.waitForTimeout(500);
+            }
+        } else if (expectedNorm.includes('reseller')) {
+            const resellerTab = page.locator('.section-content-packages .nav-link[href*="planes-reseller"]').first();
+            if (await resellerTab.count()) {
+                await resellerTab.click({ timeout: 8000 });
+                await page.waitForTimeout(500);
+            }
+        }
+
+        const cards = page.locator('.section-content-packages .tab-pane.active .package, .section-content-packages .package, .package');
+        const cardCount = await cards.count();
+        let clicked = false;
+
+        for (let i = 0; i < cardCount; i++) {
+            const card = cards.nth(i);
+            const cardText = normalizeKey(await card.innerText());
+            if (!expectedNorm || cardText.includes(expectedNorm)) {
+                const btn = card.locator('a.btn-order-now, a.btn.btn-primary, a[href*="cart.php"]').first();
+                if (await btn.count()) {
+                    await btn.scrollIntoViewIfNeeded();
+                    await btn.click({ timeout: 10000, force: true });
+                    await page.waitForTimeout(1200);
+                    await page.waitForURL(/cart\.php\?a=(?:confproduct|view)/i, { timeout: 8000 }).catch(() => null);
+                    clicked = true;
+                    break;
+                }
+            }
+        }
+
+        if (!clicked) {
+            await context.close();
+            return null;
+        }
+
+        const bodyText = cleanText(await page.textContent('body'));
+        const isConfigPage = /elija ciclo|configurar|sumario de pedido|importe a la fecha/i.test(bodyText);
+        if (!isConfigPage) {
+            await context.close();
+            return null;
+        }
+
+        const billingCyclesRaw = await page.evaluate(() => {
+            const out = [];
+            const labels = Array.from(document.querySelectorAll('#sectionCycles label[data-update-config], #sectionCycles .check-cycle label'));
+            for (const label of labels) {
+                const title = (label.querySelector('.check-title')?.textContent || '').replace(/\s+/g, ' ').trim();
+                const subtitle = (label.querySelector('.check-subtitle')?.textContent || '').replace(/\s+/g, ' ').trim();
+                const original = (label.querySelector('.cycle-full-price')?.textContent || '').replace(/\s+/g, ' ').trim();
+                const cycleMatch = title.match(/Mensual|Trimestral|Semi-Anual|Anual|Bi-Anual|Trienal/i);
+                const priceMatch = title.match(/(?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?/i);
+                const discountMatch = subtitle.match(/Ahorras?\s*(?:el\s*)?\d+%|\d+%\s*(?:Dsto|Descuento|de ahorro)/i);
+
+                if (cycleMatch && priceMatch) {
+                    out.push({
+                        ciclo: cycleMatch[0],
+                        precio: priceMatch[0],
+                        descuento: discountMatch ? discountMatch[0] : '',
+                        precio_original: original || ''
+                    });
+                }
+            }
+            return out;
+        });
+
+        const billingCycles = mergeUniqueCycles(
+            (billingCyclesRaw || []).map((c) => ({
+                ciclo: normalizeCycleName(c.ciclo || ''),
+                precio: cleanText(c.precio || ''),
+                descuento: cleanText(c.descuento || ''),
+                precio_original: cleanText(c.precio_original || '')
+            })).filter((c) => c.ciclo && c.precio)
+        );
+
+        const summary = await page.evaluate(() => {
+            const result = {};
+            const allText = (document.body.innerText || '').replace(/\s+/g, ' ').trim();
+            const totalMatch = allText.match(/Importe a la Fecha\s*((?:S\/|US\$|\$)\s?\d[\d.,]*(?:\s?[A-Z]{3})?)/i);
+            if (totalMatch) result.total = totalMatch[1].trim();
+            return result;
+        });
+
+        await context.close();
+        return { billingCycles, summary };
+    } catch (error) {
+        console.log(`   ⚠️  Click real en listado falló: ${error.message}`);
+        return null;
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
 function extractFacturaloPeriods(html = '', planKey = 'essential') {
     const blockRegex = new RegExp(`${planKey}\\s*:\\s*\\{([\\s\\S]*?)defaultPeriodIndex`, 'i');
     const blockMatch = html.match(blockRegex);
@@ -432,6 +561,95 @@ async function scrapeFacturaloPro8Page(url) {
         };
     } catch (error) {
         console.error(`   ❌ Error en método Facturalo: ${error.message}`);
+        return null;
+    }
+}
+
+async function scrapeFasturaColombiaPage(url) {
+    try {
+        console.log(`\n📦 Scrapeando (Fastura Colombia tabs): ${url}`);
+        const res = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        const $ = cheerio.load(res.data);
+        const title = cleanText($('h1').first().text()) || cleanText($('title').first().text()) || 'Fastura - Colombia';
+        const description = cleanText($('.product-group-description, .product-group-subtitle, .sub-heading').first().text());
+
+        const tabNameById = {};
+        $('.section-content-packages .nav-tabs .nav-link').each((_, el) => {
+            const href = cleanText($(el).attr('href') || '');
+            const tabId = href.startsWith('#') ? href.slice(1) : '';
+            const tabName = cleanText($(el).find('.nav-link-text').first().text()) || cleanText($(el).text());
+            if (tabId && tabName) {
+                tabNameById[tabId] = tabName;
+            }
+        });
+
+        const plans = [];
+        $('.section-content-packages .tab-content .tab-pane').each((_, tabPane) => {
+            const paneId = cleanText($(tabPane).attr('id') || '');
+            const segmento = tabNameById[paneId] || '';
+
+            $(tabPane).find('.package').each((__, el) => {
+                const planName = cleanText(
+                    $(el)
+                        .find('.package-title, .package-name h3, .package-name, .package-header h3, h3')
+                        .first()
+                        .text()
+                );
+
+                const priceAmount = cleanText(
+                    $(el).find('.price-ammount, .price-amount').first().text()
+                ) || extractAmountLikePrice(cleanText($(el).find('.package-price').first().text()));
+                const priceCycle = cleanText($(el).find('.price-cycle').first().text());
+                const setupFee = cleanText($(el).find('.price-setup').first().text());
+                const orderUrlRaw =
+                    $(el).find('a.btn-order-now, a[href*="cart.php"], a[href*="store/"]').first().attr('href') || '';
+
+                const features = [];
+                $(el).find('.package-features li, .package-content li').each((___, li) => {
+                    const text = cleanText($(li).text());
+                    if (text) features.push(text);
+                });
+
+                if (!planName) return;
+
+                plans.push({
+                    nombre: planName,
+                    precio: priceAmount || 'Consultar',
+                    ciclo: priceCycle || '',
+                    costo_instalacion: setupFee || '',
+                    caracteristicas: features,
+                    segmento,
+                    url_pedido: orderUrlRaw.startsWith('http')
+                        ? orderUrlRaw
+                        : (orderUrlRaw ? `https://buho.la${orderUrlRaw}` : '')
+                });
+            });
+        });
+
+        const dedup = [];
+        const seen = new Set();
+        for (const plan of plans) {
+            const key = `${normalizeKey(plan.nombre)}|${normalizeKey(plan.precio)}|${normalizeKey(plan.ciclo)}|${normalizeKey(plan.segmento)}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                dedup.push(plan);
+                console.log(`   ✅ Plan: ${plan.nombre} — ${plan.precio} ${plan.ciclo}${plan.segmento ? ` [${plan.segmento}]` : ''}`);
+            }
+        }
+
+        return {
+            title,
+            description,
+            plans: dedup,
+            sourceType: 'fastura-colombia-tabs'
+        };
+    } catch (error) {
+        console.error(`   ❌ Error método Fastura Colombia: ${error.message}`);
         return null;
     }
 }
@@ -999,7 +1217,7 @@ const PRODUCTS = [
     },
     // ─── Colombia ───
     {
-        url: 'https://buho.la/store/fastura-colombia',
+        url: 'https://buho.la/co/fastura?currency=3',
         jsonFile: 'fastura_colombia.json',
         name: 'Fastura - Colombia',
         samplePurchaseUrl: null
@@ -1027,6 +1245,10 @@ async function scrapeProductPage(url) {
     try {
         if (isManualDocumentationUrl(url)) {
             return await scrapeDocumentationPage(url);
+        }
+
+        if (/buho\.la\/co\/fastura\?currency=3/i.test(url)) {
+            return await scrapeFasturaColombiaPage(url);
         }
 
         if (/facturaloperu\.com\/pro8/i.test(url)) {
@@ -1074,11 +1296,11 @@ async function scrapeProductPage(url) {
             );
 
             const priceAmount = cleanText(
-                $(el).find('.price-amount, .package-price .price').first().text()
-            );
+                $(el).find('.price-ammount, .price-amount').first().text()
+            ) || extractAmountLikePrice(cleanText($(el).find('.package-price').first().text()));
             const priceCycle = cleanText($(el).find('.price-cycle').first().text());
             const setupFee = cleanText($(el).find('.price-setup').first().text());
-            const orderUrl = $(el).find('a.btn-order-now, a[href*="store/"]').attr('href') || '';
+            const orderUrl = $(el).find('a.btn-order-now, a[href*="cart.php"], a[href*="store/"]').first().attr('href') || '';
 
             // Extraer características del plan
             const features = [];
@@ -1284,6 +1506,42 @@ function updateProductJSON(product, productData) {
             } else {
                 console.log('   ⚠️  Método SPA sin planes extraídos, se mantiene JSON actual.');
             }
+        } else if (productData && productData.sourceType === 'fastura-colombia-tabs') {
+            if (scrapedPlans.length > 0) {
+                const plansWithCycles = scrapedPlans.map((plan) => {
+                    const ciclos = normalizeExtractedCycles(plan.ciclos_facturacion_extraidos || [], false);
+                    const cicloBase = normalizeCycleName(plan.ciclo || '');
+                    const precioBase = cleanText(plan.precio || '');
+                    const ciclosFiltrados = ciclos.filter((c) => {
+                        const mismoCiclo = normalizeCycleName(c.ciclo || '') === cicloBase;
+                        const mismoPrecio = cleanText(c.precio || '') === precioBase;
+                        return !(mismoCiclo && mismoPrecio);
+                    });
+                    const cleaned = {
+                        nombre: plan.nombre,
+                        precio: plan.precio,
+                        ciclo: plan.ciclo,
+                        costo_instalacion: plan.costo_instalacion || '',
+                        caracteristicas: Array.isArray(plan.caracteristicas) ? plan.caracteristicas : [],
+                        segmento: plan.segmento || '',
+                        url_pedido: plan.url_pedido || ''
+                    };
+                    if (ciclosFiltrados.length > 0) {
+                        cleaned.ciclos_facturacion = ciclosFiltrados;
+                    }
+                    return cleaned;
+                });
+
+                existingData.planes = plansWithCycles;
+                existingData.url = product.url;
+                if (existingData.contacto && typeof existingData.contacto === 'object') {
+                    existingData.contacto.web = product.url;
+                }
+                if (existingData.nota) delete existingData.nota;
+                console.log(`   ✅ Planes Fastura Colombia actualizados (${scrapedPlans.length})`);
+            } else {
+                console.log('   ⚠️  Método Fastura Colombia sin planes extraídos, se mantiene JSON actual.');
+            }
         } else if (scrapedPlans && scrapedPlans.length > 0 && existingPlanes.length > 0) {
             for (const scrapedPlan of scrapedPlans) {
                 // Buscar plan correspondiente en el JSON existente
@@ -1463,12 +1721,27 @@ async function main() {
                 }
 
                 if (plan.url_pedido && (plan.url_pedido.includes('/store/') || plan.url_pedido.includes('/cart.php'))) {
-                    const purchaseData = await scrapePurchasePage(plan.url_pedido, plan.nombre);
+                    const purchaseData = productData.sourceType === 'fastura-colombia-tabs'
+                        ? (await scrapeCyclesByClickFromListing(product.url, plan.nombre)) || (await scrapePurchasePage(plan.url_pedido, plan.nombre))
+                        : await scrapePurchasePage(plan.url_pedido, plan.nombre);
                     if (purchaseData && purchaseData.billingCycles && purchaseData.billingCycles.length > 0) {
                         const normalizedCycles = normalizeExtractedCycles(purchaseData.billingCycles, false);
                         if (normalizedCycles.length > 0) {
                             plan.ciclos_facturacion_extraidos = normalizedCycles;
                         }
+                    }
+
+                    if (
+                        productData.sourceType === 'fastura-colombia-tabs'
+                        && (!Array.isArray(plan.ciclos_facturacion_extraidos) || plan.ciclos_facturacion_extraidos.length === 0)
+                        && plan.precio
+                    ) {
+                        plan.ciclos_facturacion_extraidos = [{
+                            ciclo: plan.ciclo || 'Mensual',
+                            precio: plan.precio,
+                            descuento: '',
+                            precio_original: ''
+                        }];
                     }
                 }
                 // Esperar un poco entre requests para evitar saturar el servidor
