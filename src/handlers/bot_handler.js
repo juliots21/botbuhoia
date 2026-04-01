@@ -272,32 +272,47 @@ class BotHandler {
             }
 
             const media = await whatsappService.downloadMediaAsBase64(mediaId);
-            const validationReply = await geminiService.validatePaymentProof(
-                {
-                    base64: media.base64,
-                    mimeType: media.mimeType,
-                    fileSizeBytes: media.fileSizeBytes,
-                    caption
-                },
-                {
-                    chatHistory: history.chatHistory,
-                    userPhone
-                }
-            );
+            const captionNorm = caption.toLowerCase();
+            const shouldValidatePayment = /(comprobante|voucher|valida|validar|pago|yape|plin|transferencia|bancolombia|deposito|factura|boleta|radian|dian)/i.test(captionNorm);
+
+            const imageReply = shouldValidatePayment
+                ? await geminiService.validatePaymentProof(
+                    {
+                        base64: media.base64,
+                        mimeType: media.mimeType,
+                        fileSizeBytes: media.fileSizeBytes,
+                        caption
+                    },
+                    {
+                        chatHistory: history.chatHistory,
+                        userPhone
+                    }
+                )
+                : await geminiService.describeImage(
+                    {
+                        base64: media.base64,
+                        mimeType: media.mimeType,
+                        fileSizeBytes: media.fileSizeBytes,
+                        caption
+                    },
+                    {
+                        userPhone
+                    }
+                );
 
             history.lastActivity = Date.now();
             history.messageCount++;
 
             await this._persistConversationState(userPhone, history);
 
-            await whatsappService.sendMessage(userPhone, validationReply);
+            await whatsappService.sendMessage(userPhone, imageReply);
             metrics.increment('whatsappMessagesSent');
 
             const latency = Date.now() - startTime;
             metrics.increment('messagesProcessed');
             metrics.trackUserProcessed(userPhone, latency, userName);
             userSettingsService.markMessageProcessed(userPhone, latency);
-            logger.info(`[BOT] ✓ Validacion de imagen completada para ${userPhone} en ${latency}ms`);
+            logger.info(`[BOT] ✓ Imagen procesada (${shouldValidatePayment ? 'validacion_comprobante' : 'descripcion_general'}) para ${userPhone} en ${latency}ms`);
         } catch (error) {
             metrics.increment('messagesFailed');
             metrics.trackUserFailed(userPhone, userName);

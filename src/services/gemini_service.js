@@ -1025,6 +1025,95 @@ class GeminiService {
         }
     }
 
+    async describeImage(imageInput = {}, options = {}) {
+        const imageBase64 = String(imageInput?.base64 || '').trim();
+        const mimeType = String(imageInput?.mimeType || 'image/jpeg').trim();
+        const caption = String(imageInput?.caption || '').trim();
+        const userPhone = String(options?.userPhone || '').trim();
+
+        if (!imageBase64) {
+            throw new GeminiAPIError('No se recibio contenido de imagen para describir');
+        }
+
+        const fileSizeBytes = Number(imageInput?.fileSizeBytes || 0);
+        if (fileSizeBytes > 10 * 1024 * 1024) {
+            throw new GeminiAPIError('La imagen supera el limite de 10MB para analisis general');
+        }
+
+        const keyData = this._getNextAvailableKey();
+        if (!keyData) {
+            throw new GeminiAPIError('No hay API keys disponibles temporalmente para analizar imagen');
+        }
+
+        const runtimeConfig = this._resolveRuntimeConfig(null);
+
+        try {
+            keyData.totalCalls += 1;
+            keyData.lastUsedAt = Date.now();
+            metrics.increment('geminiCalls');
+
+            const genAI = new GoogleGenerativeAI(keyData.apiKey);
+            const model = genAI.getGenerativeModel({
+                model: config.gemini.model || 'gemini-2.5-flash',
+                generationConfig: {
+                    temperature: 0.2,
+                    maxOutputTokens: Math.max(500, Math.min(runtimeConfig.generation.maxOutputTokens, 900)),
+                    topP: runtimeConfig.generation.topP
+                }
+            });
+
+            const prompt = [
+                'Describe brevemente lo que se ve en la imagen en espanol.',
+                'Si se aprecia una marca, objeto o estado visible, mencionarlo con cautela sin inventar detalles.',
+                'No hables de comprobantes ni pagos salvo que la imagen claramente sea uno.',
+                caption ? `Contexto del usuario: ${caption}` : ''
+            ].filter(Boolean).join(' ');
+
+            const timeoutMs = Math.max(20000, runtimeConfig.timeout);
+            const result = await Promise.race([
+                model.generateContent([
+                    { text: prompt },
+                    {
+                        inlineData: {
+                            mimeType,
+                            data: imageBase64
+                        }
+                    }
+                ]),
+                new Promise((_, reject) => {
+                    setTimeout(() => reject(new GeminiAPIError('Timeout describiendo imagen con Gemini')), timeoutMs);
+                })
+            ]);
+
+            const text = String(result?.response?.text?.() || '').trim();
+            if (!text) {
+                throw new GeminiAPIError('Gemini devolvio descripcion vacia para la imagen');
+            }
+
+            keyData.failures = 0;
+            keyData.lastError = null;
+            keyData.lastErrorAt = 0;
+
+            logger.info(`[GEMINI] ✓ Imagen descrita (${mimeType}, ${Math.round(fileSizeBytes / 1024)}KB) para ${userPhone || 'usuario_sin_telefono'}`);
+            return this._finalizeReplyQuality(text);
+        } catch (error) {
+            const info = this._classifyError(error);
+            keyData.failures += 1;
+            keyData.totalErrors += 1;
+            keyData.lastError = info.code;
+            keyData.lastErrorAt = Date.now();
+            metrics.increment('geminiErrors');
+
+            if (keyData.failures >= runtimeConfig.circuitBreaker.failureThreshold) {
+                keyData.disabledUntil = Date.now() + runtimeConfig.circuitBreaker.recoveryTimeMs;
+                metrics.increment('geminiKeyRotations');
+            }
+
+            this.currentKeyIndex = (this.currentKeyIndex + 1) % this.keys.length;
+            throw new GeminiAPIError(`No se pudo describir la imagen: ${info.code}`, error);
+        }
+    }
+
     async transcribeAudio(audioInput = {}, options = {}) {
         const audioBase64 = String(audioInput?.base64 || '').trim();
         const mimeType = String(audioInput?.mimeType || 'audio/ogg').trim().toLowerCase();
