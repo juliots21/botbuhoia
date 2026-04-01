@@ -255,6 +255,22 @@ class GeminiService {
         return lastLine.length <= 28 && !/[.!?…)]$/.test(lastLine);
     }
 
+    _needsContinuationGuard(text = '') {
+        const out = String(text || '').trim();
+        if (out.length < 45) return false;
+        if (/[.!?…)]$/.test(out)) return false;
+        if (/[✅❌😊🙂😉😄😁🙌👍💰⚡📌📄🧾]$/.test(out)) return false;
+        return true;
+    }
+
+    _ensureTerminalClosure(text = '') {
+        const out = String(text || '').trim();
+        if (!out) return out;
+        if (/[.!?…)]$/.test(out)) return out;
+        if (/[✅❌😊🙂😉😄😁🙌👍💰⚡📌📄🧾]$/.test(out)) return out;
+        return `${out}.`;
+    }
+
     async _continueTruncatedReply(chain, historyMessages, partialReply, timeoutMs) {
         const continuationPrompt = [
             'Tu respuesta anterior quedó incompleta.',
@@ -1493,8 +1509,10 @@ class GeminiService {
                 attemptDebug.latencyMs = latency;
 
                 const finalReply = this._finalizeReplyQuality(response.content);
+                const hardTruncated = this._looksTruncatedReply(finalReply);
+                const shouldAttemptContinuation = hardTruncated || this._needsContinuationGuard(finalReply);
 
-                if (this._looksTruncatedReply(finalReply)) {
+                if (shouldAttemptContinuation) {
                     logger.warn('[GEMINI] Respuesta parcial detectada. Intentando continuación automática...');
                     const continuationTimeoutMs = Math.max(5000, Math.min(12000, attemptTimeout - 1200));
                     const recoveredReply = await this._continueTruncatedReply(
@@ -1504,17 +1522,19 @@ class GeminiService {
                         continuationTimeoutMs
                     );
 
-                    if (this._looksTruncatedReply(recoveredReply)) {
+                    if (hardTruncated && this._looksTruncatedReply(recoveredReply)) {
                         throw new GeminiAPIError('Model output appears truncated/incomplete');
                     }
 
+                    const safeRecoveredReply = this._ensureTerminalClosure(recoveredReply);
+
                     attemptDebug.recoveredFromTruncation = true;
-                    attemptDebug.finalReplyChars = String(recoveredReply || '').length;
+                    attemptDebug.finalReplyChars = String(safeRecoveredReply || '').length;
 
                     // Persistencia explícita de memoria conversacional para el siguiente turno.
                     if (chatHistory && typeof chatHistory.addMessage === 'function') {
                         await chatHistory.addMessage(new HumanMessage(String(userMessage || '')));
-                        await chatHistory.addMessage(new AIMessage(String(recoveredReply || '')));
+                        await chatHistory.addMessage(new AIMessage(String(safeRecoveredReply || '')));
                     }
 
                     requestDebug.status = 'SUCCESS';
@@ -1524,16 +1544,18 @@ class GeminiService {
                         attempt: attemptIndex,
                         keyIndex: keyData.index + 1,
                         latencyMs: Date.now() - startTime,
-                        finalReplyChars: String(recoveredReply || '').length
+                        finalReplyChars: String(safeRecoveredReply || '').length
                     };
 
-                    return recoveredReply;
+                    return safeRecoveredReply;
                 }
+
+                const safeFinalReply = this._ensureTerminalClosure(finalReply);
 
                 // Persistencia explícita de memoria conversacional para el siguiente turno.
                 if (chatHistory && typeof chatHistory.addMessage === 'function') {
                     await chatHistory.addMessage(new HumanMessage(String(userMessage || '')));
-                    await chatHistory.addMessage(new AIMessage(String(finalReply || '')));
+                    await chatHistory.addMessage(new AIMessage(String(safeFinalReply || '')));
                 }
 
                 requestDebug.status = 'SUCCESS';
@@ -1543,10 +1565,10 @@ class GeminiService {
                     attempt: attemptIndex,
                     keyIndex: keyData.index + 1,
                     latencyMs: latency,
-                    finalReplyChars: String(finalReply || '').length
+                    finalReplyChars: String(safeFinalReply || '').length
                 };
 
-                return finalReply;
+                return safeFinalReply;
 
             } catch (error) {
                 const errorInfo = this._classifyError(error);
