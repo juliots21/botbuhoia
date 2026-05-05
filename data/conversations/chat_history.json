@@ -1,0 +1,18 @@
+{
+  "users": {
+    "51986079838": {
+      "lastActivity": 1775062362551,
+      "messageCount": 1,
+      "messages": [
+        {
+          "type": "human",
+          "content": "Hola Búho, esta es una prueba de audio para verificar transcripción y respuesta."
+        },
+        {
+          "type": "ai",
+          "content": "¡Hola! 👋 Me alegra que estés probando el audio. Recibí tu mensaje perfectamente.\n\n¿En qué puedo ayudarte hoy, Julio? Cuéntame qué servicio de Búho te interesa. 😊"
+        }
+      ]
+    }
+  }
+}
